@@ -30,7 +30,7 @@ PROGRAM MAIN
 	
 		CASE ("graph")
 		
-			graph_partition()
+			CALL graph_partition()
 			
 			! Not reordering because in this configuration MPI doesn't appear to want to reorder them anyway.
 			! (I ran the code with reorder=true and compared before/after for different numbers of processors)

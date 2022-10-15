@@ -2,6 +2,7 @@
 
 MODULE partitionmodule
 
+	USE variablemodule
 	USE nodemodule
 
 	! Ensuring all names in the program must be explicitly declared
@@ -60,12 +61,12 @@ MODULE partitionmodule
 				! Initialising all neighbour directions to nothing. 
 				! This makes all the following `IF` statements tidier and helps later with general send/receives.
 				! 2 east/west directions required because some processors will overlap with more than 1 neighbour (but never more than 2)
-				znorth = MPI_PROC_NULL
-				zsouth = MPI_PROC_NULL
-				zeast1 = MPI_PROC_NULL
-				zeast2 = MPI_PROC_NULL
-				zwest1 = MPI_PROC_NULL
-				zwest2 = MPI_PROC_NULL
+				znorth = -2 ! MPI_PROC_NULL
+				zsouth = -2 ! MPI_PROC_NULL
+				zeast1 = -2 ! MPI_PROC_NULL
+				zeast2 = -2 ! MPI_PROC_NULL
+				zwest1 = -2 ! MPI_PROC_NULL
+				zwest2 = -2 ! MPI_PROC_NULL
 		
 				alloc_pid = alloc_pid + 1 ! Starts at zero.
 			
@@ -123,12 +124,12 @@ MODULE partitionmodule
 			DO e = 1, (n+1)
 			
 				! Initialising all neighbour directions to nothing
-				znorth = MPI_PROC_NULL
-				zsouth = MPI_PROC_NULL
-				zeast1 = MPI_PROC_NULL
-				zeast2 = MPI_PROC_NULL
-				zwest1 = MPI_PROC_NULL
-				zwest2 = MPI_PROC_NULL
+				znorth = -2 ! MPI_PROC_NULL
+				zsouth = -2 ! MPI_PROC_NULL
+				zeast1 = -2 ! MPI_PROC_NULL
+				zeast2 = -2 ! MPI_PROC_NULL
+				zwest1 = -2 ! MPI_PROC_NULL
+				zwest2 = -2 ! MPI_PROC_NULL
 				
 				alloc_pid = alloc_pid + 1 ! Keep numbering going after zone A!
 				

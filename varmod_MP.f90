@@ -27,7 +27,7 @@ MODULE variablemodule
 	
 	! Solving
 	REAL (KIND = 8) :: res_proc_val, res_final_val
-	INTEGER :: k, iter_max
+	INTEGER :: iter_max
 	
 	! MPI Send/Recv and Neighbour Information
 	INTEGER :: north, south, east1, east2, west1, west2, znorth, zsouth, zeast1, zeast2, zwest1, zwest2
