@@ -20,6 +20,10 @@ MODULE variablemodule
 	INTEGER :: p, n, r, s, k , m , d, e, alloc_pid, cumulative_neighbours, zone, zone_col, zone_row
 	INTEGER :: node_low_x, node_low_y, node_high_x, node_high_y, gift_to_zone_A, gift_to_zone_B, rem, rem_2, nx_zA, nx_zB
 	INTEGER :: ind_low_x, ind_high_x, ind_low_y, ind_high_y
+		! Specifically for cartesian:
+	INTEGER :: bestdiv, bestgap, divisor, ndims, COMM_CART
+	INTEGER, ALLOCATABLE :: dims(:), coords(:)
+	LOGICAL, ALLOCATABLE :: periods(:)
 	
 	! MPI Communicator
 	INTEGER :: COMM_GRAPH, neighbours_count, Nedges, size_edges
@@ -47,10 +51,6 @@ MODULE variablemodule
 	REAL (KIND = 8) :: SENDINGSUBBARAY, RECVSUBBARAY, RESIZED_RECVSUBBARAY
 	INTEGER :: subarray_Nrows, subarray_Ncols, tag2
 	
-	! Partitioning in a cartesian manner
-	INTEGER :: bestdiv, bestgap, divisor, ndims, COMM_CART, y_flip_coord
-	INTEGER, ALLOCATABLE :: dims(:), coords(:)
-	LOGICAL, ALLOCATABLE :: periods(:)
 	
 	! Arrays, solving constants, max/av temp, wall timing start/end
 	REAL (KIND = 8) :: c1, c2, c3, c4, c5, t1, t2, T_max, T_avg, res_max

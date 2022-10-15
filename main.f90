@@ -46,6 +46,33 @@ PROGRAM MAIN
 			CALL MPI_GRAPH_NEIGHBORS(COMM_GRAPH, pid, neighbours_count, neighbours_array, ierr)
 			write(*,*) 'i am pid', pid, 'my neighbours are', neighbours_array
 			
+		CASE ("cart")
+		
+			CALL cart_partition()
+		
+			! Create a new cartesian communicator based on the above analysis
+			CALL MPI_CART_CREATE(MPI_COMM_WORLD, ndims, dims, periods, .true., COMM_CART, ierr)
+			CALL MPI_COMM_RANK(COMM_CART, pid, ierr) ! New processor ID number
+			CALL MPI_CART_COORDS(COMM_CART, pid, ndims, coords, ierr)
+			! coords is an array with pid location in (x, y) but y counts from top down and counts start from zero
+			! Send/Recv id's for each processor horizontally and vertically (if applicable)
+			CALL MPI_CART_SHIFT(COMM_CART, 0, 1, west1, east1, ierr)
+			CALL MPI_CART_SHIFT(COMM_CART, 1, 1, north, south, ierr)
+			
+			east2 = MPI_PROC_NULL
+			west2 = MPI_PROC_NULL
+			
+			! &&& if we want to use the same send/recv lines as for graph topology, we 
+			! NEED TO GIVE send/recv east/wests index data in the same variables!!!
+			
+			! Nodes and indices in x
+			CALL get_nodes(nx, dims(1), coords(1), node_low_x, node_high_x)
+			CALL get_indices(dims(1), coords(1), node_low_x, node_high_x, ind_low_x, ind_high_x, ncalcpoints_x)
+			! Nodes and indices in y
+			CALL get_nodes(ny, dims(2), coords(2), node_low_y, node_high_y)
+			CALL get_indices(dims(2), coords(2), node_low_y, node_high_y, ind_low_y, ind_high_y, ncalcpoints_y)
+	
+	
 		CASE DEFAULT 
 		  WRITE(*,*) "No topology selected or incorrect selection"
 		  STOP

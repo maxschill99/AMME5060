@@ -308,5 +308,56 @@ MODULE partitionmodule
 	
 	END SUBROUTINE graph_partition
 	
+	! ---------------------------------------------------------------------------------------
+	!	   A_A
+	!	  (-.-)
+	!	   |-|
+	!	  /   \						cartesian decomposition subroutine
+	!	 |     |   __
+	!	 |  || |  |  \__
+	!	  \_||_/_/
+	! ---------------------------------------------------------------------------------------
+	
+	SUBROUTINE cart_partition()
+		IMPLICIT NONE
+		
+		! The domain is split up in 2 dimensions if possible.
+		! First, it needs to be checked if splitting up in 2 dimensions is even possible.
+		! If the number of processors is prime, the domain will have to be split into slabs.
+
+		! Check what the greatest divisor of the number of processors is:
+		bestdiv = 1 			! 1 guaranteed
+		bestgap = Nprocs-1		! Difference between divisors. Ideally this would be zero (perfect square).
+		
+		! Start from 2 (A divisor of 1 is already a guarantee) and just go up to half the number of procs,
+		! or nearest integer close to half way if Nprocs is odd.
+		DO divisor = 2, FLOOR(DBLE(Nprocs)/2.) 
+			IF (MOD(Nprocs,divisor) .EQ. 0) THEN ! If it's a divisor
+			
+				IF (ABS(divisor - Nprocs/divisor) .LE. bestgap) THEN 
+					bestgap = ABS(divisor - Nprocs/divisor)
+					bestdiv = divisor ! Looking for 2 divisors closest together (take biggest from those 2 if Nprocs not square)
+				END IF
+				
+			END IF
+		END DO
+		
+		ndims = 2 ! Partition in 2 dimensions
+		ALLOCATE( dims(ndims), periods(ndims), coords(ndims))
+		
+		IF (bestdiv .EQ. 1) THEN ! The number is prime and the domain cannot be partitioned in 2 dimensions
+			dims(1) = Nprocs ! Number of procs in this one dimension is simply all of them (number of procs in x direction)
+			dims(2) = 1 ! Number of procs in y direction is 1
+		ELSE
+			dims(2) = Nprocs/bestdiv ! number of processors in y direction
+			dims(1) = bestdiv ! This number will always be greater than or equal to dim(2) (more columns). Number of procs in x direction
+		END IF
+		
+		! The domain is not periodic
+		periods = .false.
+		
+	
+	END SUBROUTINE cart_partition
+	
 
 END MODULE partitionmodule
