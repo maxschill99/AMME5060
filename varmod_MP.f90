@@ -13,7 +13,7 @@ MODULE variablemodule
 	INTEGER :: nx, ny, iunit, Ntsteps
 	
 	! Problem variables / arrays
-	CHARACTER(LEN=5) :: topology
+	CHARACTER(LEN=5) :: topology, solving
 	REAL (KIND = 8), ALLOCATABLE :: x(:), y(:)
 	
 	! Partitioning and node/indices
@@ -77,8 +77,8 @@ MODULE variablemodule
 		iunit 	= 11 				! I/O unit number
 	
 		!! - Modelling-specific Parameters
-		nx 		= 2**5+1			! Number of points in domain in x direction (evenly spaced)
-		ny 		= 2**5+1			! Number of points in domain in y direction (evenly spaced)
+		nx 		= 2**2+1			! Number of points in domain in x direction (evenly spaced)
+		ny 		= 2**2+1			! Number of points in domain in y direction (evenly spaced)
 		dx 		= Lx/(nx-1)			! Spatial step based on desired number of points [m]
 		dy 		= Ly/(ny-1)			! Spatial step based on desired number of points [m]
 		Ntsteps = 1000				! Number of time steps

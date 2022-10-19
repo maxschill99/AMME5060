@@ -1,0 +1,5 @@
+F90 = gfortran
+
+outProg: residuals.f90 jacobi.f90 varmod_MP.f90 maxtest.f90
+
+gfortran varmod_MP.f90 residuals.f90 jacobi.f90 maxtest.f90 -o test1.exe

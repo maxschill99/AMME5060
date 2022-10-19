@@ -1,0 +1,6 @@
+Check equation is symmetric
+get seperate subroutines working
+try mlevel for special case
+parallelise code
+set up solver for both conjugate gradient and normal - need to properly set up initial condition
+get communication and solution initialisation sorted - for parallelisation

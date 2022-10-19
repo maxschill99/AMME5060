@@ -2,7 +2,7 @@ module residuals
 
     ! Calling modules
     USE variablemodule
-    USE jacobi
+    ! USE jacobi
 
     IMPLICIT NONE
 
@@ -10,24 +10,32 @@ module residuals
     !-------------------------------------------------------------------------------------------!
     CONTAINS
     !-------------------------------------------------------------------------------------------!
+    !-------------------------------------------------------------------------------------------!
+    !-------------------------------------------------------------------------------------------!
+    !-------------------------------------------------------------------------------------------!
+    !-------------------------------------------------------------------------------------------!
+    !-------------------------------------------------------------------------------------------!
 
-    subroutine residcalc(aw,ae,an,as,ap,b,x,r)
+    subroutine residcalc(aw,ae,an,as,ap,b,x,res)
         IMPLICIT NONE
-        REAL(KIND = 8), DIMENSION(kx,ky), INTENT(IN) :: aw,ae,an,as,ap,b,x
-        REAL(KIND = 8), DIMENSION(kx,ky), INTENT(OUT) :: r
+
+        ! Initialising variables
+        real(kind=8), dimension(nx,ny), INTENT(IN) :: aw,ae,an,as,ap,b,x
+        real(kind=8), dimension(nx,ny), INTENT(OUT) :: res
         
         INTEGER :: i,j
         
-        r(:,:) = 0.0
+        ! Initialising residual
+        res(:,:) = 0.0
         
-        DO j = jl,jh
-            DO i = il,ih
-            
-                r(i,j) = b(i,j) - ( aw(i,j)*x(i-1,j) + ae(i,j)*x(i+1,j) + an(i,j)*x(i,j+1) &
-                                                    + as(i,j)*x(i,j-1) + ap(i,j)*x(i,j) )		
-            
-            ENDDO
-        ENDDO		
+        do j = 2,(ny-1)
+        ! do j = jl,jh
+            do i = 2,(nx-1)
+            ! do i = il,ih           
+                res(i,j) = b(i,j) - ( aw(i,j)*x(i-1,j) + ae(i,j)*x(i+1,j) + an(i,j)*x(i,j+1) &
+                                                    + as(i,j)*x(i,j-1) + ap(i,j)*x(i,j) )		           
+            end do
+        end do		
 
     end subroutine residcalc
 
