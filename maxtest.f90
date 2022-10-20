@@ -37,7 +37,7 @@ program test
     ! Computation
 
     call solninit(an,as,ae,aw,ap,b,Tin,Tout)
-    call solver(an,as,ae,aw,ap,b,x,y,Tin,Tout)
+    call jacobisolv(an,as,ae,aw,ap,b,x,y,Tin,Tout)
 
     write(*,1600) Tout
 

@@ -101,7 +101,7 @@ module jacobi
     !-------------------------------------------------------------------------------------------!
     !-------------------------------------------------------------------------------------------!
     ! subroutine to solve jacobi
-    SUBROUTINE solver(an,as,ae,aw,ap,b,x,y,Tin,Tout)
+    SUBROUTINE jacobisolv(an,as,ae,aw,ap,b,x,y,Tin,Tout)
 
         IMPLICIT NONE
         ! Getting variables from varmod module
@@ -237,6 +237,13 @@ module jacobi
         1600 FORMAT(5(F14.8,1x))
 
     END SUBROUTINE solver
+
+
+
+    SUBROUTINE jacobiprecon()
+
+
+    END SUBROUTINE jacobiprecon
 
 
 end module jacobi
