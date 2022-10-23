@@ -1,4 +1,4 @@
-module cjgradient
+module cgradient
     ! NOTE - need equation being solved to be symmetric
 
     ! Calling modules
@@ -29,13 +29,13 @@ module cjgradient
     !-------------------------------------------------------------------------------------------!
     !-------------------------------------------------------------------------------------------!
     
-        subroutine CGSolve(an,as,ae,aw,ap,b,x,y,Tin,Tout)
+        subroutine CGSolve(an,as,ae,aw,ap,b,T)
 
         ! Initialising variables
-        Real(kind = 8), INTENT(IN) :: Tin(nx,ny), an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny), x(nx), y(ny)
-        Real(kind = 8), INTENT(OUT) :: Tout(nx,ny)
+        Real(kind = 8), INTENT(IN) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny)
+        Real(kind = 8), INTENT(INOUT) :: T(nx,ny)
 
-        Real(kind = 8), dimension(nx,ny) :: Minv, d, res, q, s, T
+        Real(kind = 8), dimension(nx,ny) :: Minv, d, res, q, s, Tin, Tout
         Real(kind = 8) :: delta, delta_o, dp, alpha, beta
         Real(kind = 8) :: rcurrent
         Integer :: i,j,niter_precon
@@ -61,15 +61,13 @@ module cjgradient
         ! Initialising q and s
         q(:,:) = 0
         s(:,:) = 0
-        ! Initialising temp array
-        T = Tin
 
         ! Calling solution initialisations
         ! Initialising - ae,aw,as,an,ap,T,x,y
-        Call SolInit()
+        ! call solninit(an,as,ae,aw,ap,b,T)
 
         ! initiliasing residuals
-        call residcalc(aw,ae,an,as,ap,b,x,res)
+        call residcalc(aw,ae,an,as,ap,b,T,res)
           
         ! Calculate Domain averaged residual for stopping critterion
         ! rcurrent = SUM(SUM(ABS(r(il:ih,jl:jh)),1),1) / ((kx-2)*(ky-2))
@@ -79,13 +77,20 @@ module cjgradient
         do j = 1,ny
             do i = 1,nx
                 Minv(i,j) = 1/ap(i,j)
-                d(i,j) = Minv(i,j)*res(i,j)
             end do
         end do
 
+        if (precon) then
+            do j = 1,ny
+                do i = 1,nx
+                    d(i,j) = Minv(i,j)*res(i,j)
+                end do
+            end do
+        end if
+
         ! Pre-conditioning matrix
         if (precon) then
-            jacobisolv(an,as,ae,aw,ap,b,x,y,Tin,Tout)
+            call jacobiprecon(ae,aw,an,as,ap,b,Minv,d)
         else
             d = res
         end if
@@ -93,7 +98,7 @@ module cjgradient
         ! Calculating delta and delta0
         do j = 1,ny
             do i = 1,nx
-                dp = dp + r(j,i)*d(i,j)
+                dp = dp + res(i,j)*d(i,j)
             end do
         end do
 
@@ -113,10 +118,10 @@ module cjgradient
         do while ((time < t_final).and.(rcurrent < res_max))
 
             ! Compute q matrix
-            do j = 1,ny
-                do i = 1,nx
+            do j = 2,(ny-1)
+                do i = 2,(nx-1)
                     q(i,j) = ae(i,j)*d(i-1,j) + aw(i,j)*d(i+1,j) + an(i,j)*d(i,j+1) + as(i,j)*d(i,j-1) &
-                                ap(i,j)*d(i,j)
+                               + ap(i,j)*d(i,j)
                 end do
             end do
 
@@ -125,7 +130,7 @@ module cjgradient
             ! compute alpha - note computing dot product in the numerator
             do j = 1,ny
                 do i = 1,nx
-                    dp = dp + d(j,i)*q(i,j)
+                    dp = dp + d(i,j)*q(i,j)
                 end do
             end do
             alpha = delta/dp
@@ -140,7 +145,7 @@ module cjgradient
 
             ! Updating residual
             if ((MOD(iter,50).eq.0)) then
-                call residcalc(aw,ae,an,as,ap,b,x,res)
+                call residcalc(aw,ae,an,as,ap,b,T,res)
             else
                 do j = 1,ny
                     do i = 1,nx
@@ -152,19 +157,19 @@ module cjgradient
 
             ! Pre-conditioning s matrix
             if (precon) then
-                jacobisolv(an,as,ae,aw,ap,b,x,y,Tin,Tout)
+                call jacobiprecon(ae,aw,an,as,ap,b,Minv,s)
             else
-                s = r
-            end
+                s = res
+            end if
 
 
             dp = 0
             ! Calculating delta and delta0
             do j = 1,ny
                 do i = 1,nx
-                    dp = dp + r(j,i)*s(i,j)
+                    dp = dp + res(j,i)*s(i,j)
                 end do
-            end 
+            end do
             
             delta_o = delta
             delta = dp
@@ -181,7 +186,7 @@ module cjgradient
             end do
 
             ! Update residual check	
-		    rcurrent = SUM(SUM(ABS(r(1:nx,1,ny)),1),1) / ((nx-2)*(ny-2))	
+		    rcurrent = SUM(SUM(ABS(res(1:nx,1:ny)),1),1) / ((nx-2)*(ny-2))	
 
 
             ! Updating timer and iteration counter
@@ -190,18 +195,14 @@ module cjgradient
 
             WRITE(*,'(a20,i20.1)') '# Current Iteration = ', iter
             WRITE(*,'(a20,E20.6)') '# Current Residual = ', rcurrent
-            WRITE(*,'(a20,f20.10)') '# Current Max Temp = ', MAXVAL(t)
+            WRITE(*,'(a20,f20.10)') '# Current Max Temp = ', MAXVAL(T)
 
         end do 
                 
                 
 
-
-
-
-
         end subroutine CGsolve
 
 
 
-end module cjgradient
+end module cgradient

@@ -3,8 +3,17 @@ program test
     ! Using modules
     USE jacobi
     USE variablemodule
+    USE cgradient
 
     IMPLICIT NONE
+    
+    ! Initialising MPI Module
+    include 'mpif.h'
+
+  	! INITIALISE MPI
+	CALL MPI_INIT(ierr)
+	CALL MPI_COMM_RANK(MPI_COMM_WORLD, pid, ierr) ! Getting processor ID number
+	CALL MPI_COMM_SIZE(MPI_COMM_WORLD, Nprocs, ierr) ! Getting number of total processors in global communicator
 
     !-----------------------------------------------------------------------------------------------------!
     !-----------------------------------------------------------------------------------------------------!
@@ -12,7 +21,7 @@ program test
     ! Initialising variables
 
     ! ! Variables newly defined in this program
-    Real(kind = 8), allocatable :: Tin(:,:), Tout(:,:)
+    Real(kind = 8), allocatable :: T(:,:)
     Real(kind = 8), allocatable :: an(:,:), as(:,:), ae(:,:), aw(:,:), ap(:,:), b(:,:)
 
 
@@ -29,19 +38,24 @@ program test
     allocate(b(nx,ny))
     allocate(x(nx))
     allocate(y(ny))
-    allocate(Tin(nx,ny))
-    allocate(Tout(nx,ny))
+    allocate(T(nx,ny))
 
     ! !-----------------------------------------------------------------------------------------------------!
     ! !-----------------------------------------------------------------------------------------------------!
     ! Computation
 
-    call solninit(an,as,ae,aw,ap,b,Tin,Tout)
-    call jacobisolv(an,as,ae,aw,ap,b,x,y,Tin,Tout)
+    ! Calculation of solution using only jacobi solver
+    ! call solninit(an,as,ae,aw,ap,b,T)
+    ! call jacobisolv(an,as,ae,aw,ap,b,x,y,T)
 
-    write(*,1600) Tout
+    ! write(*,1600) T
 
+
+    ! Calculation of solution using Conjugate Gradient Method
+    call solninit(an,as,ae,aw,ap,b,T)
+    call CGSolve(an,as,ae,aw,ap,b,T)
     
+    write(*,1600) T
     
     
     ! NOTE: Need to update this to match the number of spatial divisions (nx)
@@ -50,5 +64,8 @@ program test
     1400 FORMAT(8(F14.8,1x))
     1200 FORMAT(I2.1,I2.1,6(F8.4,1x))
     1300 FORMAT(I2.1,6(F10.8,1x))
+
+
+    CALL MPI_FINALIZE(ierr)
 
 end program test

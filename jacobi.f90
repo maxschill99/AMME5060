@@ -52,15 +52,14 @@ module jacobi
     !-------------------------------------------------------------------------------------------!
     !-------------------------------------------------------------------------------------------!
     ! subroutine to initialise solution
-    SUBROUTINE solninit(an,as,ae,aw,ap,b,Tin,Tout)
+    SUBROUTINE solninit(an,as,ae,aw,ap,b,T)
 
-        Real(kind = 8), INTENT(OUT) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny), Tin(nx,ny), Tout(nx,ny)
+        Real(kind = 8), INTENT(OUT) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny), T(nx,ny)
 
         ! Real(kind = 8) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny)
         ! Real(kind = 8) :: Tin(nx,ny), Tout(nx,ny)
 
-        Tin(:,:) = 0
-        Tout(:,:) = 0
+        T(:,:) = 0
 
         ! Computing A and B matrices - need matrices for conjugate gradient method
         do j = 1,ny
@@ -86,11 +85,11 @@ module jacobi
         ! Setting solver boundary conditions
 
         do i = 1,nx
-            Tin(1,i) = sin((pi*x(i))/Lx)
+            T(1,i) = sin((pi*x(i))/Lx)
         end do
-        Tin(:,1) = 0
-        Tin(:,nx) = 0
-        Tin(ny,:) = 0
+        T(:,1) = 0
+        T(:,nx) = 0
+        T(ny,:) = 0
 
     END SUBROUTINE solninit
 
@@ -101,7 +100,7 @@ module jacobi
     !-------------------------------------------------------------------------------------------!
     !-------------------------------------------------------------------------------------------!
     ! subroutine to solve jacobi
-    SUBROUTINE jacobisolv(an,as,ae,aw,ap,b,x,y,Tin,Tout)
+    SUBROUTINE jacobisolv(an,as,ae,aw,ap,b,x,y,T)
 
         IMPLICIT NONE
         ! Getting variables from varmod module
@@ -115,11 +114,11 @@ module jacobi
             ! t_final - total time
 
         ! Defining variables
-        REAL(kind=8), INTENT(IN) :: Tin(nx,ny), an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny), x(nx), y(ny)
-        REAL(kind=8), INTENT(OUT) :: Tout(nx,ny)
+        REAL(kind=8), INTENT(IN) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny), x(nx), y(ny)
+        REAL(kind=8), INTENT(INOUT) :: T(nx,ny)
 
         Real(kind = 8) :: time, rcurrent
-        Real(kind = 8) :: T(nx,ny), Tn(nx,ny), Told(nx,ny), res(nx,ny)
+        Real(kind = 8) :: Tn(nx,ny), Told(nx,ny), res(nx,ny)
         Real(kind = 8) :: Minv(nx,ny)
         Integer :: i,j,iter, ii
 
@@ -131,7 +130,6 @@ module jacobi
 
         ! Inititialising old temperature array
         Told(:,:) = 0
-        T = Tin
 
         ! Initialising time counter
         time = 0
@@ -172,8 +170,6 @@ module jacobi
                         
                 end do
 
-                ! Outputting temp array from solver
-                Tout = T
 
             !ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo!
             !ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo!
@@ -226,9 +222,6 @@ module jacobi
 
                 end do
 
-                ! Outputting the temp array
-                Tout = T
-
             CASE DEFAULT 
                 WRITE(*,*) "No solver selected or incorrect selection"
                 STOP
@@ -236,12 +229,42 @@ module jacobi
 
         1600 FORMAT(5(F14.8,1x))
 
-    END SUBROUTINE solver
+    END SUBROUTINE jacobisolv
 
 
 
-    SUBROUTINE jacobiprecon()
+    SUBROUTINE jacobiprecon(ae,aw,an,as,ap,b,Minv,T)
 
+        IMPLICIT NONE
+        Real(kind = 8), INTENT(IN) :: ae(nx,ny), aw(nx,ny), an(nx,ny), as(nx,ny), ap(nx,ny), b(nx,ny), Minv(nx,ny)
+        Real(kind = 8), INTENT(INOUT) :: T(nx,ny)
+
+        Real(kind = 8) :: res(nx,ny)
+        Integer :: i,j,ii, niter_precon
+
+        ! Setting number of preconditioning iterations
+        niter_precon = 5
+        
+        do j = 1,ny
+            do i = 1,nx
+                T(i,j) = b(i,j)*Minv(i,j)
+            end do
+        end do	
+
+        ! do ii = 1,5
+        do ii = 1,niter_precon
+        
+            ! Get Residual of Current system Ax = b
+            CALL residcalc(aw,ae,an,as,ap,b,T,res)
+            
+            ! Update Solution
+            do j = 1,ny
+                do i = 1,nx 
+                    T(i,j) = T(i,j) + res(i,j)*Minv(i,j)
+                end do
+            end do
+                
+	    end do
 
     END SUBROUTINE jacobiprecon
 
