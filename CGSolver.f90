@@ -38,7 +38,7 @@ module cgradient
         Real(kind = 8), dimension(nx,ny) :: Minv, d, res, q, s, Tin, Tout
         Real(kind = 8) :: delta, delta_o, dp, alpha, beta
         Real(kind = 8) :: rcurrent
-        Integer :: i,j,niter_precon
+        Integer :: i,j,niter_precon, il,jl,ih,jh
         Integer :: iter
         Real(kind = 8) :: time
         
@@ -75,14 +75,18 @@ module cgradient
 
         ! Calculating d matrix (search vector matrix)
         do j = 1,ny
+        ! do j = jl,jh
             do i = 1,nx
+            ! do i = il,ih
                 Minv(i,j) = 1/ap(i,j)
             end do
         end do
 
         if (precon) then
             do j = 1,ny
+            ! do j = jl,jh
                 do i = 1,nx
+                ! do i = il,ih
                     d(i,j) = Minv(i,j)*res(i,j)
                 end do
             end do
@@ -97,7 +101,9 @@ module cgradient
 
         ! Calculating delta and delta0
         do j = 1,ny
+        ! do j = jl,jh
             do i = 1,nx
+            ! do i = il,ih
                 dp = dp + res(i,j)*d(i,j)
             end do
         end do
@@ -119,7 +125,9 @@ module cgradient
 
             ! Compute q matrix
             do j = 2,(ny-1)
+            ! do j = jl,jh
                 do i = 2,(nx-1)
+                ! do i = il,ih
                     q(i,j) = ae(i,j)*d(i-1,j) + aw(i,j)*d(i+1,j) + an(i,j)*d(i,j+1) + as(i,j)*d(i,j-1) &
                                + ap(i,j)*d(i,j)
                 end do
@@ -129,7 +137,9 @@ module cgradient
             dp = 0
             ! compute alpha - note computing dot product in the numerator
             do j = 1,ny
+            ! do j = jl,jh
                 do i = 1,nx
+                ! do i = il,ih
                     dp = dp + d(i,j)*q(i,j)
                 end do
             end do
@@ -137,7 +147,9 @@ module cgradient
 
             ! updating T
             do j = 1,ny
+            ! do j = jl,jh
                 do i = 1,nx
+                ! do i = il,ih
                     T(i,j) = T(i,j) + alpha*d(i,j)
                 end do
             end do
@@ -148,7 +160,9 @@ module cgradient
                 call residcalc(aw,ae,an,as,ap,b,T,res)
             else
                 do j = 1,ny
+                ! do j = jl,jh
                     do i = 1,nx
+                    ! do i = il,ih
                         res(i,j) = res(i,j) - alpha*q(i,j)
                     end do
                 end do
@@ -166,7 +180,9 @@ module cgradient
             dp = 0
             ! Calculating delta and delta0
             do j = 1,ny
+            ! do j = jl,jh
                 do i = 1,nx
+                ! do i = il,ih
                     dp = dp + res(j,i)*s(i,j)
                 end do
             end do
@@ -180,7 +196,9 @@ module cgradient
             
             ! Updating search vector
             do j = 1,ny
+            ! do j = jl,jh
                 do i = 1,nx
+                ! do i = il,ih
                     d(i,j) = s(i,j) + beta*d(i,j)
                 end do
             end do

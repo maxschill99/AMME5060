@@ -3,8 +3,8 @@ try mlevel for special case
 
 
 *** PRIORITIES ***
-Check equation is symmetric
-parallelise code
+Check equation is symmetric (might need to do steady state)
+parallelise code - implement communication within jacobi and conjugate gradient module
 set up solver for both conjugate gradient and normal - need to properly set up initial condition
 get communication and solution initialisation sorted - for parallelisation
 try to implement red-black jacobi solver
@@ -13,3 +13,6 @@ try to implement red-black jacobi solver
 Conjugate gradient method
 TO DO:
     Update preconditioning solver
+
+QUESTIONS
+    Where does the communication occur in the conjugate gradient method

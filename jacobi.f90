@@ -52,14 +52,12 @@ module jacobi
     !-------------------------------------------------------------------------------------------!
     !-------------------------------------------------------------------------------------------!
     ! subroutine to initialise solution
-    SUBROUTINE solninit(an,as,ae,aw,ap,b,T)
+    SUBROUTINE solninit(an,as,ae,aw,ap,b)
 
-        Real(kind = 8), INTENT(OUT) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny), T(nx,ny)
+        Real(kind = 8), INTENT(OUT) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny)
 
         ! Real(kind = 8) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny)
         ! Real(kind = 8) :: Tin(nx,ny), Tout(nx,ny)
-
-        T(:,:) = 0
 
         ! Computing A and B matrices - need matrices for conjugate gradient method
         do j = 1,ny
@@ -81,15 +79,6 @@ module jacobi
             y(j) = (j-1)*dy
         end do
 
-
-        ! Setting solver boundary conditions
-
-        do i = 1,nx
-            T(1,i) = sin((pi*x(i))/Lx)
-        end do
-        T(:,1) = 0
-        T(:,nx) = 0
-        T(ny,:) = 0
 
     END SUBROUTINE solninit
 
@@ -120,9 +109,9 @@ module jacobi
         Real(kind = 8) :: time, rcurrent
         Real(kind = 8) :: Tn(nx,ny), Told(nx,ny), res(nx,ny)
         Real(kind = 8) :: Minv(nx,ny)
-        Integer :: i,j,iter, ii
+        Integer :: i,j,iter, ii, il,jl,ih,jh
 
-        ! Set code case for type of solver, norm - for normal solving or conj - for conjugate gradient
+        ! Set code case for type of solver, norm - for jacobi solving, redblack - for redblack jacobi solver
         solving = "norm"
 
         !------------------------------------------------------------------------------------!
@@ -140,36 +129,6 @@ module jacobi
         ! Solving unsteady 2D Heat diffusion - dT/dt = alpha*(d^2T/dx^2 + d^2T/dy^2)
 
         SELECT CASE (solving)
-
-            ! Jacobi Pre-conditioner
-            CASE ("conj")
-
-                do j = 1,ny
-                ! do j = jl,jh
-                    do i = 1,nx
-                    ! do i = il,ih                       
-                        Minv(i,j) = 1/ap(i,j)
-                        T(i,j) = b(i,j)*Minv(i,j)                       
-                    end do
-                end do
-
-                ! do ii = 1,niter_precon
-                do ii = 1,5
-                
-                    ! Get Residual of Current system Ax = b
-                    call residcalc(aw,ae,an,as,ap,b,T,res)
-                    
-                    ! Update Solution
-                    do j = 1,ny
-                    ! do j = jl,jh
-                        do i = 1,nx
-                        ! do i = il,ih               
-                            T(i,j) = T(i,j) + res(i,j)*Minv(i,j)
-                        end do
-                    end do
-                        
-                end do
-
 
             !ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo!
             !ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo!
@@ -222,6 +181,99 @@ module jacobi
 
                 end do
 
+            !ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo!
+            !ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo!
+            !ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo!
+            ! red are odd nodes
+            ! black are even nodes
+            CASE ("redblack")
+
+                ! do while ((t<ttot).and.(res>rmax))
+                do while (time<t_final)
+                    if (time == 0) then
+
+                        ! RED NODES CALCULATION
+                        do j = 2,(ny-1),2
+                        ! do j = jl,jh,2
+                            do i = 2,(nx-1),2
+                            ! do i = il,ih,2
+                                Tn(i,j) = (T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
+                                    + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j))/2
+                            end do
+                        end do
+
+                        ! RED NODES COMMUNICATION
+
+
+
+                        !---------------------------------------------------------------!
+                        !---------------------------------------------------------------!
+                        ! BLACK NODES CALCULATION
+                        do j = 3,(ny-1),2
+                        ! do j = jl+1,jh,2
+                            do i = 3,(nx-1),2
+                            ! do i = il+1,ih,2
+                                Tn(i,j) = (T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
+                                    + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j))/2
+                            end do
+                        end do
+
+                        ! BLACK NODES COMMUNICATION
+                    else
+
+                        ! RED NODES CALCULATION
+                        do j = 2,(ny-1),2
+                        ! do j = jl,jh,2
+                            do i = 2,(nx-1),2
+                            ! do i = il,ih,2
+                                Tn(i,j) = T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
+                                    + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j) - Told(i,j)
+                            end do
+                        end do
+
+                        ! RED NODES COMMUNICATION
+
+
+
+                        !---------------------------------------------------------------!
+                        !---------------------------------------------------------------!
+                        ! BLACK NODES CALCULATION
+                        do j = 3,(ny-1),2
+                        ! do j = jl+1,jh,2
+                            do i = 3,(nx-1),2
+                            ! do i = il+1,ih,2
+                                Tn(i,j) = T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
+                                    + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j) - Told(i,j)
+                            end do
+                        end do
+                        
+                        ! BLACK NODES COMMUNICATION
+
+                    end if
+
+
+                    ! computing residuals
+                    call residcalc(aw,ae,an,as,ap,b,T,res)
+
+                    ! Calculate Domain averaged residual for stopping critterion
+                    ! rcurrent = SUM(SUM(ABS(r(il:ih,jl:jh)),1),1) / ((kx-2)*(ky-2))
+                    rcurrent = SUM(SUM(ABS(res(1:nx,1:ny)),1),1) / ((nx-2)*(ny-2))
+
+                    if (mod(iter,100).eq.0) then
+                        write(*,*) '      iter', '      res'
+                        write(*,*) iter, rcurrent
+                    end if
+
+                    ! updating old and new temperature values
+                    Told = T
+                    T = Tn
+
+                    ! updating counter
+                    time = time + dt
+                    iter = iter + 1
+
+                end do
+
             CASE DEFAULT 
                 WRITE(*,*) "No solver selected or incorrect selection"
                 STOP
@@ -240,13 +292,15 @@ module jacobi
         Real(kind = 8), INTENT(INOUT) :: T(nx,ny)
 
         Real(kind = 8) :: res(nx,ny)
-        Integer :: i,j,ii, niter_precon
+        Integer :: i,j,ii, niter_precon, il,jl,ih,jh
 
         ! Setting number of preconditioning iterations
         niter_precon = 5
         
         do j = 1,ny
+        ! do j = jl,jh
             do i = 1,nx
+            ! do i = il,ih
                 T(i,j) = b(i,j)*Minv(i,j)
             end do
         end do	
@@ -259,7 +313,9 @@ module jacobi
             
             ! Update Solution
             do j = 1,ny
+            ! do j = jl,jh
                 do i = 1,nx 
+                ! do i = il,ih
                     T(i,j) = T(i,j) + res(i,j)*Minv(i,j)
                 end do
             end do
