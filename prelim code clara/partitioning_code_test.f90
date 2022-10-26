@@ -446,7 +446,7 @@ PROGRAM test
 					south, tag, COMM_GRAPH, request_array(12), ierr)
 
 	! Wait for data sends to complete before black points start referencing red points
-	CALL MPI_WAITALL(d, request_array, status_array, ierr)
+	CALL MPI_WAITALL(12, request_array, status_array, ierr)
 
 	call sleep(2)
 	if (pid == 3) then
