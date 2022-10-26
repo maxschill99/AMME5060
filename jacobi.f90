@@ -9,9 +9,8 @@ module jacobi
     ! Calling modules
     USE variablemodule
     USE residuals
-    USE nodemodule
-    USE partitionmodule
-    ! USE cjgradient
+    ! USE nodemodule
+    ! USE partitionmodule
 
 
     IMPLICIT NONE
@@ -26,379 +25,124 @@ module jacobi
     !-------------------------------------------------------------------------------------------!
     !-------------------------------------------------------------------------------------------!
     !-------------------------------------------------------------------------------------------!
-    !-------------------------------------------------------------------------------------------!
-    ! subroutine to allocate variables
-    subroutine allocatevar()
-
-        ! Real(kind = 8), INTENT(IN) :: an(:,:), as(:,:), ae(:,:), aw(:,:), ap(:,:), b(:,:)
-
-        Real(kind = 8), allocatable :: an(:,:), as(:,:), ae(:,:), aw(:,:), ap(:,:), b(:,:)
-
-        allocate(an(nx,ny))
-        allocate(as(nx,ny))
-        allocate(ae(nx,ny))
-        allocate(aw(nx,ny))
-        allocate(ap(nx,ny))
-        allocate(b(nx,ny))
-        ! allocate(x(nx))
-        ! allocate(y(ny))
-        ! allocate(Tin(nx,ny))
-        ! allocate(Tout(nx,ny))
-
-
-    end subroutine allocatevar
-
-    !-------------------------------------------------------------------------------------------!
-    !-------------------------------------------------------------------------------------------!
-    !-------------------------------------------------------------------------------------------!
-    !-------------------------------------------------------------------------------------------!
-    !-------------------------------------------------------------------------------------------!
-    !-------------------------------------------------------------------------------------------!
-    ! subroutine to initialise solution
-    SUBROUTINE solninit(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
-
-        ! ! Declaring local variables
-        ! Integer :: il,ih,jl,jh
-        ! il = ind_low_x
-        ! ih = ind_high_x
-        ! jl = ind_low_y
-        ! jh = ind_high_y
-
-        Integer, INTENT(IN) :: il,ih,jl,jh
-        ! Real(kind = 8), INTENT(OUT) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny)
-        Real(kind = 8), INTENT(OUT) :: an(il:ih,jl:jh), as(il:ih,jl:jh), ae(il:ih,jl:jh), aw(il:ih,jl:jh), &
-         ap(il:ih,jl:jh), b(il:ih,jl:jh), T(il:ih,jl:jh)
-
-
-        ! Real(kind = 8) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny)
-        ! Real(kind = 8) :: Tin(nx,ny), Tout(nx,ny)
-
-        ! Computing A and B matrices - need matrices for conjugate gradient method
-        ! do j = 1,ny
-        do j = jl,jh
-            ! do i = 1,nx
-            do i = il,ih
-                ! simplifying variable notation
-                an(i,j) = (2*dt*alpha)/dy**2
-                as(i,j) = (2*dt*alpha)/dy**2
-                ae(i,j) = (2*dt*alpha)/dx**2
-                aw(i,j) = (2*dt*alpha)/dx**2
-                ap(i,j) = (-2/dx**2 - 2/dy**2)*2*dt*alpha
-                b(i,j) = 0
-            end do
-        end do
-
-        do i = 1,nx
-            x(i) = (i-1)*dx
-        end do
-        do j = 1,ny
-            y(j) = (j-1)*dy
-        end do
-
-        ! Setting solver boundary conditions
-        T(:,:) = 0
-
-        do i = il,ih
-            T(1,i) = sin((pi*x(i))/Lx)
-        end do
-        T(:,1) = 0
-        T(:,nx) = 0
-        T(ny,:) = 0
-
-
-    END SUBROUTINE solninit
-
-    !-------------------------------------------------------------------------------------------!
-    !-------------------------------------------------------------------------------------------!
-    !-------------------------------------------------------------------------------------------!
-    !-------------------------------------------------------------------------------------------!
-    !-------------------------------------------------------------------------------------------!
     ! parallel jacobi solver
-    SUBROUTINE jac(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
+    SUBROUTINE jac(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
+
 
         ! Defining variables
-        Real(kind=8), INTENT(IN) :: an(il:ih,jl:jh), as(il:ih,jl:jh), ae(il:ih,jl:jh), aw(il:ih,jl:jh), &
-             ap(il:ih,jl:jh), b(il:ih,jl:jh)
+        Real(kind=8), INTENT(IN), dimension(il:ih,jl:jh) :: an,as,ae,aw,ap,b
+        Real(kind=8), INTENT(IN) :: time
         Integer, INTENT(IN) :: il,ih,jl,jh
         Real(kind=8), INTENT(INOUT) :: T(il:ih,jl:jh)
 
-        Integer :: i,j,iter, ii
-        Real(kind = 8) :: time, rcurrent, Told(il:ih,jl:jh), Tn(il:ih,jl:jh)
-        Real(kind = 8) :: res(il:ih,jl:jh)
-
-        ! Inititialising old temperature array
-        Told(:,:) = 0
-
-        ! Initialising time counter
-        time = 0
-        iter = 0
-
-            ! do while ((t<ttot).and.(res>rmax))
-            do while (time<t_final)
-                if (time == 0) then
-                    do j = jl,jh
-                        do i = il,ih
-                            Tn(i,j) = (T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
-                                + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j))/2
-                        end do
-                    end do
-                else
-                    do j = jl,jh
-                        do i = il,ih
-                            Tn(i,j) = T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
-                                + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j) - Told(i,j)
-                        end do
-                    end do
-                end if
+        Real(kind = 8) :: Told(il:ih,jl:jh), Tn(il:ih,jl:jh)
+        Integer :: i,j
 
 
-                ! COMMUNICATION
-                
-
-
-                ! computing residuals
-                call residcalc(aw,ae,an,as,ap,b,T,res)
-
-                ! Calculate Domain averaged residual for stopping critterion
-                rcurrent = SUM(SUM(ABS(res(il:ih,jl:jh)),1),1) / ((nx-2)*(ny-2))
-
-                if (mod(iter,100).eq.0) then
-                    write(*,*) '      iter', '      res'
-                    write(*,*) iter, rcurrent
-                end if
-
-                ! updating old and new temperature values
-                Told = T
-                T = Tn
-
-                ! updating counter
-                time = time + dt
-                iter = iter + 1
-
+        if (time == 0) then
+            do j = jl,jh
+                do i = il,ih
+                    Tn(i,j) = (T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
+                        + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j))/2
+                end do
             end do
+        else
+            do j = jl,jh
+                do i = il,ih
+                    Tn(i,j) = T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
+                        + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j) - Told(i,j)
+                end do
+            end do
+        end if
 
     END SUBROUTINE jac
 
+    !-------------------------------------------------------------------------------------------!
+    !-------------------------------------------------------------------------------------------!
+    !-------------------------------------------------------------------------------------------!
+    !-------------------------------------------------------------------------------------------!
+    !-------------------------------------------------------------------------------------------!
+    ! parallel redblack solver
+    ! red nodes
+    SUBROUTINE rednodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
 
-    SUBROUTINE rednodes
+        ! Defining variables
+        Real(kind=8), INTENT(IN), dimension(il:ih,jl:jh) :: an,as,ae,aw,ap,b
+        Real(kind=8), INTENT(IN) :: time
+        Integer, INTENT(IN) :: il,ih,jl,jh
+        Real(kind=8), INTENT(INOUT) :: T(il:ih,jl:jh)
+
+        Real(kind=8) :: Told(il:ih,jl:jh), Tn(il:ih,jl:jh)
+        Integer :: i,j
 
 
-
+        if (time == 0) then
+            ! RED NODES CALCULATION
+            do j = 2,(ny-1),2
+            ! do j = jl,jh,2
+                do i = 2,(nx-1),2
+                ! do i = il,ih,2
+                    Tn(i,j) = (T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
+                        + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j))/2
+                end do
+            end do
+        else
+            do j = 2,(ny-1),2
+            ! do j = jl,jh,2
+                do i = 2,(nx-1),2
+                ! do i = il,ih,2
+                    Tn(i,j) = T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
+                        + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j) - Told(i,j)
+                end do
+            end do
+        end if
 
     END SUBROUTINE rednodes
 
-
-    SUBROUTINE blacknodes
-
-
-
-
-    END SUBROUTINE blacknodes
-    !-------------------------------------------------------------------------------------------!
-    !-------------------------------------------------------------------------------------------!
-    !-------------------------------------------------------------------------------------------!
-    !-------------------------------------------------------------------------------------------!
-    !-------------------------------------------------------------------------------------------!
-    ! subroutine to solve jacobi - completely serial atm
-    SUBROUTINE jacobisolv(an,as,ae,aw,ap,b,x,y,T)
-
-        IMPLICIT NONE
-        ! Getting variables from varmod module
-            ! nx - number of x points
-            ! ny - number of y points
-            ! dx - discretisation in x
-            ! dy - discretisation in y
-            ! dt - temporal discretisation
-            ! dt - temporal discretisation
-            ! alpha - thermal diffusivity
-            ! t_final - total time
+    ! black nodes
+    SUBROUTINE blacknodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
 
         ! Defining variables
-        REAL(kind=8), INTENT(IN) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny), x(nx), y(ny)
-        REAL(kind=8), INTENT(INOUT) :: T(nx,ny)
+        Real(kind=8), INTENT(IN), dimension(il:ih,jl:jh) :: an,as,ae,aw,ap,B
+        Real(kind=8), INTENT(IN) :: time
+        Integer, INTENT(IN) :: il,ih,jl,jh
+        Real(kind=8), INTENT(INOUT) :: T(il:ih,jl:jh)
 
-        Real(kind = 8) :: time, rcurrent
-        Real(kind = 8) :: Tn(nx,ny), Told(nx,ny), res(nx,ny)
-        Real(kind = 8) :: Minv(nx,ny)
-        Integer :: i,j,iter, ii, il,jl,ih,jh
-
-        ! Set code case for type of solver, norm - for jacobi solving, redblack - for redblack jacobi solver
-        solving = "norm"
-
-        !------------------------------------------------------------------------------------!
-        !------------------------------------------------------------------------------------!
-
-        ! Inititialising old temperature array
-        Told(:,:) = 0
-
-        ! Initialising time counter
-        time = 0
-        iter = 0
-
- 
-        ! Iteratively solving the jacobi equation
-        ! Solving unsteady 2D Heat diffusion - dT/dt = alpha*(d^2T/dx^2 + d^2T/dy^2)
-
-        SELECT CASE (solving)
-
-            !ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo!
-            !ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo!
-            !ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo!
-            ! Jacobi solver
-            CASE ("norm")
-       
-                ! do while ((t<ttot).and.(res>rmax))
-                do while (time<t_final)
-                    if (time == 0) then
-                        do j = 2,(ny-1)
-                        ! do j = jl,jh
-                            do i = 2,(nx-1)
-                            ! do i = il,ih
-                                Tn(i,j) = (T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
-                                    + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j))/2
-                            end do
-                        end do
-                    else
-                        do j = 2,(ny-1)
-                        ! do j = jl,jh
-                            do i = 2,(nx-1)
-                            ! do i = il,ih
-                                Tn(i,j) = T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
-                                    + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j) - Told(i,j)
-                            end do
-                        end do
-                    end if
+        Real(kind=8) :: Told(il:ih,jl:jh), Tn(il:ih,jl:jh)
+        Integer :: i,j
 
 
-                    ! COMMUNICATION
-
-
-                    ! computing residuals
-                    call residcalc(aw,ae,an,as,ap,b,T,res)
-
-                    ! Calculate Domain averaged residual for stopping critterion
-                    ! rcurrent = SUM(SUM(ABS(r(il:ih,jl:jh)),1),1) / ((kx-2)*(ky-2))
-                    rcurrent = SUM(SUM(ABS(res(1:nx,1:ny)),1),1) / ((nx-2)*(ny-2))
-
-                    if (mod(iter,100).eq.0) then
-                        write(*,*) '      iter', '      res'
-                        write(*,*) iter, rcurrent
-                    end if
-
-                    ! updating old and new temperature values
-                    Told = T
-                    T = Tn
-
-                    ! updating counter
-                    time = time + dt
-                    iter = iter + 1
-
+        if (time == 0) then
+            ! BLACK NODES CALCULATION
+            do j = 3,(ny-1),2
+            ! do j = jl+1,jh,2
+                do i = 3,(nx-1),2
+                ! do i = il+1,ih,2
+                    Tn(i,j) = (T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
+                        + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j))/2
                 end do
-
-            !ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo!
-            !ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo!
-            !ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo!
-            ! red are odd nodes
-            ! black are even nodes
-            CASE ("redblack")
-
-                ! do while ((t<ttot).and.(res>rmax))
-                do while (time<t_final)
-                    if (time == 0) then
-
-                        ! RED NODES CALCULATION
-                        do j = 2,(ny-1),2
-                        ! do j = jl,jh,2
-                            do i = 2,(nx-1),2
-                            ! do i = il,ih,2
-                                Tn(i,j) = (T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
-                                    + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j))/2
-                            end do
-                        end do
-
-                        ! RED NODES COMMUNICATION
-
-
-
-                        !---------------------------------------------------------------!
-                        !---------------------------------------------------------------!
-                        ! BLACK NODES CALCULATION
-                        do j = 3,(ny-1),2
-                        ! do j = jl+1,jh,2
-                            do i = 3,(nx-1),2
-                            ! do i = il+1,ih,2
-                                Tn(i,j) = (T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
-                                    + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j))/2
-                            end do
-                        end do
-
-                        ! BLACK NODES COMMUNICATION
-                    else
-
-                        ! RED NODES CALCULATION
-                        do j = 2,(ny-1),2
-                        ! do j = jl,jh,2
-                            do i = 2,(nx-1),2
-                            ! do i = il,ih,2
-                                Tn(i,j) = T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
-                                    + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j) - Told(i,j)
-                            end do
-                        end do
-
-                        ! RED NODES COMMUNICATION
-
-
-
-                        !---------------------------------------------------------------!
-                        !---------------------------------------------------------------!
-                        ! BLACK NODES CALCULATION
-                        do j = 3,(ny-1),2
-                        ! do j = jl+1,jh,2
-                            do i = 3,(nx-1),2
-                            ! do i = il+1,ih,2
-                                Tn(i,j) = T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
-                                    + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j) - Told(i,j)
-                            end do
-                        end do
-                        
-                        ! BLACK NODES COMMUNICATION
-
-                    end if
-
-
-                    ! computing residuals
-                    call residcalc(aw,ae,an,as,ap,b,T,res)
-
-                    ! Calculate Domain averaged residual for stopping critterion
-                    ! rcurrent = SUM(SUM(ABS(r(il:ih,jl:jh)),1),1) / ((kx-2)*(ky-2))
-                    rcurrent = SUM(SUM(ABS(res(1:nx,1:ny)),1),1) / ((nx-2)*(ny-2))
-
-                    if (mod(iter,100).eq.0) then
-                        write(*,*) '      iter', '      res'
-                        write(*,*) iter, rcurrent
-                    end if
-
-                    ! updating old and new temperature values
-                    Told = T
-                    T = Tn
-
-                    ! updating counter
-                    time = time + dt
-                    iter = iter + 1
-
+            end do
+        else
+            do j = 3,(ny-1),2
+            ! do j = jl+1,jh,2
+                do i = 3,(nx-1),2
+                ! do i = il+1,ih,2
+                    Tn(i,j) = T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
+                        + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j) - Told(i,j)
                 end do
+            end do
+        end if
 
-            CASE DEFAULT 
-                WRITE(*,*) "No solver selected or incorrect selection"
-                STOP
-	    END SELECT
-
-        1600 FORMAT(5(F14.8,1x))
-
-    END SUBROUTINE jacobisolv
+    END SUBROUTINE blacknodes
 
 
 
+    !-------------------------------------------------------------------------------------------!
+    !-------------------------------------------------------------------------------------------!
+    !-------------------------------------------------------------------------------------------!
+    !-------------------------------------------------------------------------------------------!
+    !-------------------------------------------------------------------------------------------!
+    ! jacobi preconditioner for conjugate gradient
     SUBROUTINE jacobiprecon(ae,aw,an,as,ap,b,Minv,T)
 
         IMPLICIT NONE

@@ -40,7 +40,8 @@ module residuals
     end subroutine residcalc
 
 
-    subroutine parres(aw,ae,an,as,ap,b,T,il,ih,jl,jh,res)
+    ! parallel residual calculation
+    subroutine respar(aw,ae,an,as,ap,b,T,il,ih,jl,jh,res)
 
         ! Initialising variables
         Integer, INTENT(IN) :: il,ih,jl,jh
@@ -57,7 +58,7 @@ module residuals
             end do
         end do	
 
-    end subroutine parres
+    end subroutine respar
 
 
 end module residuals
