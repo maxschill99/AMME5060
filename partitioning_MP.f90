@@ -346,8 +346,8 @@ MODULE partitionmodule
 		ALLOCATE( dims(ndims), periods(ndims), coords(ndims))
 		
 		IF (bestdiv .EQ. 1) THEN ! The number is prime and the domain cannot be partitioned in 2 dimensions
-			dims(1) = Nprocs ! Number of procs in this one dimension is simply all of them (number of procs in x direction)
-			dims(2) = 1 ! Number of procs in y direction is 1
+			WRITE('ERROR: You have picked cartesian 2D but the number of processors is prime. Program stopping.')
+			STOP()
 		ELSE
 			dims(2) = Nprocs/bestdiv ! number of processors in y direction
 			dims(1) = bestdiv ! This number will always be greater than or equal to dim(2) (more columns). Number of procs in x direction
