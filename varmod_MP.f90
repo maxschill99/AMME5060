@@ -87,6 +87,7 @@ MODULE variablemodule
 		
 		!! - Send/Recv -
 		tag		= 1
+		tag2	= 5
 		
 		!! - Iteration Loops -
 		res_max = 0.001				! Maximum residual value

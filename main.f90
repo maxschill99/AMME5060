@@ -160,6 +160,103 @@ PROGRAM MAIN
 	! Call communication
 	
 	
+	
+	! *************************************************
+	! --- Collating Final Temperature Arrays ---
+	! Tk arrays from node values need to be sent to processor zero who needs to put them in the right place.
+	! Sending must consider that ghost nodes need to be ignored, and that looks different for all processors
+	! Receving will also need to consider where the matrix goes in the final domain (will not be contiguous)
+	
+	! ---- MAXIMUM AND AVERAGE TEMPERATURE ----
+	! Printing maximum and average temperature to 8 decimal places:
+	
+	! ! Max temperature. Can take max over ghost nodes too because it doesn't matter - after global max.
+	! CALL MPI_REDUCE(maxval(Tk), &
+	! T_max, 1, MPI_DOUBLE_PRECISION, MPI_MAX, 0, COMM_CART, ierr)
+	
+	! ! Average temperature. Only calculate average over nodes considered by each processor. Ignore ghost nodes.
+	! CALL MPI_REDUCE( (1/(DBLE(nx)*DBLE(ny))) * sum( Tk(node_low_y:node_high_y, node_low_x:node_high_x) ), &
+ 	! T_avg, 1, MPI_DOUBLE_PRECISION, MPI_SUM, 0, COMM_CART, ierr)
+	
+	! IF (pid .EQ. 0) THEN 
+		! WRITE(*,'(A35, f10.8, A16)') "Maximum temperature across domain: ", T_max, " degrees Celcius"
+		! WRITE(*,'(A35, f10.8, A16)') "Average temperature across domain: ", T_avg, " degrees Celcius"
+	! END IF
+	
+	! ---- SEND DATA TYPE CREATION ----
+	! The final send/recvs will be dependent on number of processors unlike before. Re-allocate relevant arrays to reflect this
+	DEALLOCATE( status_array  )
+	DEALLOCATE( request_array )
+	ALLOCATE( status_array(MPI_STATUS_SIZE, Nprocs+1) )
+	ALLOCATE( request_array(Nprocs+1) )
+	
+	! All processors first create subarrays. These are the final temperature array cleansed of the extra ghost nodes
+	subarray_Nrows = node_high_y-node_low_y + 1
+	subarray_Ncols = node_high_x-node_low_x + 1
+	
+	CALL MPI_Type_create_subarray(2, [ncalcpoints_y+2,ncalcpoints_x+2], [subarray_Nrows,subarray_Ncols], &
+	[node_low_y-ind_low_y, node_low_x-ind_low_x], MPI_ORDER_FORTRAN, MPI_DOUBLE_PRECISION, SENDINGSUBBARAY, ierr)
+	CALL MPI_TYPE_COMMIT(SENDINGSUBBARAY, ierr)
+	
+	! These subarrays are now sent to PID 0
+	CALL MPI_ISEND( Tk, 1, SENDINGSUBBARAY, 0, tag2, COMM_TOPO, request_array(1), ierr)
+		
+	! If pid 0, then make space to obtain relevant information about each subarray, and the final temp array for the domain 
+	IF (pid .EQ. 0) THEN
+		ALLOCATE( Tfinal(1:ny,1:nx) )
+		ALLOCATE( subarray_rows_array(1:Nprocs) )
+		ALLOCATE( subarray_cols_array(1:Nprocs) )
+		ALLOCATE( subarray_row_start(1:Nprocs) )
+		ALLOCATE( subarray_col_start(1:Nprocs) )
+	END IF
+	
+	
+	! ---- RECIEVE SUBARRAY TYPE ----
+
+	! Gather subarray information from all processors
+		! Subarray row sizes
+		CALL MPI_GATHER( subarray_Nrows, 1, MPI_INTEGER, subarray_rows_array, 1, MPI_INTEGER, 0, COMM_CART, ierr )
+		! Subarray column sizes
+		CALL MPI_GATHER( subarray_Ncols, 1, MPI_INTEGER, subarray_cols_array, 1, MPI_INTEGER, 0, COMM_CART, ierr )
+		! Start row location in the final matrix (minus 1 because start location starts at zero)
+		CALL MPI_GATHER( node_low_y-1, 	 1, MPI_INTEGER, subarray_row_start,  1, MPI_INTEGER, 0, COMM_CART, ierr )
+		! Start column location in the final matrix (minus 1 because start location starts at zero)
+		CALL MPI_GATHER( node_low_x-1, 	 1, MPI_INTEGER, subarray_col_start,  1, MPI_INTEGER, 0, COMM_CART, ierr )
+		
+			
+	! Pid 0 receiving data and putting into final file
+	IF (pid .EQ. 0) THEN
+
+		DO i = 0, Nprocs-1
+		
+			! Creating receive subarray type bespoke to each processor
+			CALL MPI_Type_create_subarray(2, [ny, nx], [subarray_rows_array(i+1), subarray_cols_array(i+1)], &
+			[subarray_row_start(i+1),subarray_col_start(i+1)], MPI_ORDER_FORTRAN, MPI_DOUBLE_PRECISION, RECVSUBBARAY, ierr)
+			
+			CALL MPI_TYPE_COMMIT(RECVSUBBARAY, ierr)
+		
+			! Receiving with this new receiving subarray type
+			CALL MPI_IRECV( Tfinal, 1, RECVSUBBARAY, &
+				i, tag2, COMM_CART, request_array(i+2), ierr)
+		END DO
+
+		CALL MPI_WAITALL(Nprocs+1, request_array, status_array, ierr)
+		
+		
+		! --- PUTTING INTO FILE ---
+		! x vector of whole domain (could have also done a mpi_gatherv)
+		xtot 	= 0. + dx * [(i, i=0,(nx-1))] ! Implied DO loop used
+		! y vector of whole domain (could have also done a mpi_gatherv)
+		ytot 	= 1. - dy * [(i, i=0,(ny-1))] ! Implied DO loop used
+
+		CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tfinal )
+		
+		! &&&&& is ytot okay?? I think it might need to be swapped 1.-->0., (-)-->(+)
+		! &&&&& Tk references / temperature array references
+		
+	END IF
+	
+	
 
 
 
