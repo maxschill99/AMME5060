@@ -359,5 +359,29 @@ MODULE partitionmodule
 	
 	END SUBROUTINE cart_partition
 	
+	! --------------------------------------------------------------------------------------- 
+	!     _____     ____
+	!    /      \  |  o | 
+	!   |        |/ ___\|                slab decomposition subroutine
+	!   |_________/     
+	!   |_|_| |_|_|
+	!	  
+	! ---------------------------------------------------------------------------------------
+	
+	
+	SUBROUTINE slab_partition()
+		IMPLICIT NONE
+		
+		! The domain is split up in 1 dimension
+		ndims = 2 
+		ALLOCATE( dims(ndims), periods(ndims), coords(ndims))
+		
+		dims(1) = Nprocs ! Number of procs in this one dimension is simply all of them (number of procs in x direction)
+		dims(2) = 1 ! Number of procs in y direction is 1
+		
+		! The domain is not periodic
+		periods = .false.
+		
+	END SUBROUTINE slab_partition
 
 END MODULE partitionmodule
