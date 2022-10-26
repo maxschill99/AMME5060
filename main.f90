@@ -135,16 +135,18 @@ PROGRAM MAIN
 	
 ! CREATING COMMUNICATOR
 
+
 ! INITIALISE TEMP DISTRIBUTION 
 	! boundary conditions most pizza like
+
 
 
 ! SOLVER
 	! outer loop: time stepping
 		! solve for time step n+1 and while r<err
-			! multigrid module with jacobi/gauss seidel 
-				! inverted V
-				! number of levels dictated by grid points and divisible factor used 
+			! conjugate gradient/jacobi/redback
+
+
 			! this will involve looping through temperature arrays
 		
 		! end solve for timestep n+1

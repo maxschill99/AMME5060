@@ -9,7 +9,10 @@ module jacobi
     ! Calling modules
     USE variablemodule
     USE residuals
+    USE nodemodule
+    USE partitionmodule
     ! USE cjgradient
+
 
     IMPLICIT NONE
 
@@ -52,16 +55,29 @@ module jacobi
     !-------------------------------------------------------------------------------------------!
     !-------------------------------------------------------------------------------------------!
     ! subroutine to initialise solution
-    SUBROUTINE solninit(an,as,ae,aw,ap,b)
+    SUBROUTINE solninit(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
 
-        Real(kind = 8), INTENT(OUT) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny)
+        ! ! Declaring local variables
+        ! Integer :: il,ih,jl,jh
+        ! il = ind_low_x
+        ! ih = ind_high_x
+        ! jl = ind_low_y
+        ! jh = ind_high_y
+
+        Integer, INTENT(IN) :: il,ih,jl,jh
+        ! Real(kind = 8), INTENT(OUT) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny)
+        Real(kind = 8), INTENT(OUT) :: an(il:ih,jl:jh), as(il:ih,jl:jh), ae(il:ih,jl:jh), aw(il:ih,jl:jh), &
+         ap(il:ih,jl:jh), b(il:ih,jl:jh), T(il:ih,jl:jh)
+
 
         ! Real(kind = 8) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny)
         ! Real(kind = 8) :: Tin(nx,ny), Tout(nx,ny)
 
         ! Computing A and B matrices - need matrices for conjugate gradient method
-        do j = 1,ny
-            do i = 1,nx
+        ! do j = 1,ny
+        do j = jl,jh
+            ! do i = 1,nx
+            do i = il,ih
                 ! simplifying variable notation
                 an(i,j) = (2*dt*alpha)/dy**2
                 as(i,j) = (2*dt*alpha)/dy**2
@@ -79,16 +95,111 @@ module jacobi
             y(j) = (j-1)*dy
         end do
 
+        ! Setting solver boundary conditions
+        T(:,:) = 0
+
+        do i = il,ih
+            T(1,i) = sin((pi*x(i))/Lx)
+        end do
+        T(:,1) = 0
+        T(:,nx) = 0
+        T(ny,:) = 0
+
 
     END SUBROUTINE solninit
 
+    !-------------------------------------------------------------------------------------------!
+    !-------------------------------------------------------------------------------------------!
+    !-------------------------------------------------------------------------------------------!
+    !-------------------------------------------------------------------------------------------!
+    !-------------------------------------------------------------------------------------------!
+    ! parallel jacobi solver
+    SUBROUTINE jac(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
 
+        ! Defining variables
+        Real(kind=8), INTENT(IN) :: an(il:ih,jl:jh), as(il:ih,jl:jh), ae(il:ih,jl:jh), aw(il:ih,jl:jh), &
+             ap(il:ih,jl:jh), b(il:ih,jl:jh)
+        Integer, INTENT(IN) :: il,ih,jl,jh
+        Real(kind=8), INTENT(INOUT) :: T(il:ih,jl:jh)
+
+        Integer :: i,j,iter, ii
+        Real(kind = 8) :: time, rcurrent, Told(il:ih,jl:jh), Tn(il:ih,jl:jh)
+        Real(kind = 8) :: res(il:ih,jl:jh)
+
+        ! Inititialising old temperature array
+        Told(:,:) = 0
+
+        ! Initialising time counter
+        time = 0
+        iter = 0
+
+            ! do while ((t<ttot).and.(res>rmax))
+            do while (time<t_final)
+                if (time == 0) then
+                    do j = jl,jh
+                        do i = il,ih
+                            Tn(i,j) = (T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
+                                + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j))/2
+                        end do
+                    end do
+                else
+                    do j = jl,jh
+                        do i = il,ih
+                            Tn(i,j) = T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
+                                + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j) - Told(i,j)
+                        end do
+                    end do
+                end if
+
+
+                ! COMMUNICATION
+                
+
+
+                ! computing residuals
+                call residcalc(aw,ae,an,as,ap,b,T,res)
+
+                ! Calculate Domain averaged residual for stopping critterion
+                rcurrent = SUM(SUM(ABS(res(il:ih,jl:jh)),1),1) / ((nx-2)*(ny-2))
+
+                if (mod(iter,100).eq.0) then
+                    write(*,*) '      iter', '      res'
+                    write(*,*) iter, rcurrent
+                end if
+
+                ! updating old and new temperature values
+                Told = T
+                T = Tn
+
+                ! updating counter
+                time = time + dt
+                iter = iter + 1
+
+            end do
+
+    END SUBROUTINE jac
+
+
+    SUBROUTINE rednodes
+
+
+
+
+    END SUBROUTINE rednodes
+
+
+    SUBROUTINE blacknodes
+
+
+
+
+    END SUBROUTINE blacknodes
     !-------------------------------------------------------------------------------------------!
     !-------------------------------------------------------------------------------------------!
     !-------------------------------------------------------------------------------------------!
     !-------------------------------------------------------------------------------------------!
     !-------------------------------------------------------------------------------------------!
-    ! subroutine to solve jacobi
+    ! subroutine to solve jacobi - completely serial atm
     SUBROUTINE jacobisolv(an,as,ae,aw,ap,b,x,y,T)
 
         IMPLICIT NONE
@@ -157,6 +268,9 @@ module jacobi
                             end do
                         end do
                     end if
+
+
+                    ! COMMUNICATION
 
 
                     ! computing residuals

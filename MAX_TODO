@@ -9,6 +9,10 @@ set up solver for both conjugate gradient and normal - need to properly set up i
 get communication and solution initialisation sorted - for parallelisation
 try to implement red-black jacobi solver
 
+Implement local indices
+Implement communication
+Initialise variables with parallelisation
+
 
 Conjugate gradient method
 TO DO:

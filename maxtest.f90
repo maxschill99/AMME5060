@@ -1,9 +1,9 @@
 program test
 
     ! Using modules
-    USE jacobi
+    ! USE jacobi
     USE variablemodule
-    USE cgradient
+    ! USE cgradient
 
     IMPLICIT NONE
     
@@ -18,7 +18,10 @@ program test
     ! ! Variables newly defined in this program
     Real(kind = 8), allocatable :: T(:,:)
     Real(kind = 8), allocatable :: an(:,:), as(:,:), ae(:,:), aw(:,:), ap(:,:), b(:,:)
-    Integer :: il, ih, jl, jh, npp
+    Integer(kind = 4) :: il, ih, jl, jh, npp
+
+
+    il = 0; ih = 0; jl = 0; jh = 0
 
 
     ! ! Calling subroutines from modules
@@ -26,20 +29,25 @@ program test
 
     ! call allocatevar()
     ! Allocation of variable sizes
-    allocate(an(nx,ny))
-    allocate(as(nx,ny))
-    allocate(ae(nx,ny))
-    allocate(aw(nx,ny))
-    allocate(ap(nx,ny))
-    allocate(b(nx,ny))
-    allocate(x(nx))
-    allocate(y(ny))
-    allocate(T(nx,ny))
+
+    ! do j = jl,jh
+    !     do i = il,ih
+    !         allocate(an(il:ih,jl:jh))
+    !         allocate(as(il:ih,jl:jh))
+    !         allocate(ae(il:ih,jl:jh))
+    !         allocate(aw(il:ih,jl:jh))
+    !         allocate(ap(il:ih,jl:jh))
+    !         allocate(b(il:ih,jl:jh))
+    !         allocate(T(il:ih,jl:jh))
+    !     end do
+    ! end do
 
     ! INITIALISE MPI
 	CALL MPI_INIT(ierr)
 	CALL MPI_COMM_RANK(MPI_COMM_WORLD, pid, ierr) ! Getting processor ID number
 	CALL MPI_COMM_SIZE(MPI_COMM_WORLD, nprocs, ierr) ! Getting number of total processors in global communicator
+
+
 
     ! Assume that nx = ny
     npp = nx/nprocs
@@ -48,37 +56,28 @@ program test
     jl = il
     jh = ih
 
+    write(*,*) pid, il,ih, jl,jh
 
     ! !-----------------------------------------------------------------------------------------------------!
     ! !-----------------------------------------------------------------------------------------------------!
     ! Initialising boundary conditions on temp array
-
-    ! Setting solver boundary conditions
-     T(:,:) = 0
-
-    do i = il,ih
-        T(1,i) = sin((pi*x(i))/Lx)
-    end do
-    T(:,1) = 0
-    T(:,nx) = 0
-    T(ny,:) = 0
 
     ! !-----------------------------------------------------------------------------------------------------!
     ! !-----------------------------------------------------------------------------------------------------!
     ! Computation
 
     ! Calculation of solution using only jacobi solver
-    ! call solninit(an,as,ae,aw,ap,b)
-    ! call jacobisolv(an,as,ae,aw,ap,b,x,y,T)
+    ! call solninit(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
 
     ! write(*,1600) T
+    ! call jacobisolv(an,as,ae,aw,ap,b,x,y,T)
 
 
     ! Calculation of solution using Conjugate Gradient Method
-    call solninit(an,as,ae,aw,ap,b)
-    call CGSolve(an,as,ae,aw,ap,b,T)
+    ! call solninit(an,as,ae,aw,ap,b)
+    ! call CGSolve(an,as,ae,aw,ap,b,T)
     
-    write(*,1600) T
+    ! write(*,1600) T
     
     
     ! NOTE: Need to update this to match the number of spatial divisions (nx)
