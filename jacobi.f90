@@ -32,7 +32,7 @@ module jacobi
         ! Defining variables
         Real(kind=8), INTENT(IN), dimension(il:ih,jl:jh) :: an,as,ae,aw,ap,b
         Real(kind=8), INTENT(IN) :: time
-        Integer, INTENT(IN) :: il,ih,jl,jh
+        Integer(kind = 8), INTENT(IN) :: il,ih,jl,jh
         Real(kind=8), INTENT(INOUT) :: T(il:ih,jl:jh)
 
         Real(kind = 8) :: Told(il:ih,jl:jh), Tn(il:ih,jl:jh)
@@ -69,7 +69,7 @@ module jacobi
         ! Defining variables
         Real(kind=8), INTENT(IN), dimension(il:ih,jl:jh) :: an,as,ae,aw,ap,b
         Real(kind=8), INTENT(IN) :: time
-        Integer, INTENT(IN) :: il,ih,jl,jh
+        Integer(kind = 8), INTENT(IN) :: il,ih,jl,jh
         Real(kind=8), INTENT(INOUT) :: T(il:ih,jl:jh)
 
         Real(kind=8) :: Told(il:ih,jl:jh), Tn(il:ih,jl:jh)
@@ -105,7 +105,7 @@ module jacobi
         ! Defining variables
         Real(kind=8), INTENT(IN), dimension(il:ih,jl:jh) :: an,as,ae,aw,ap,B
         Real(kind=8), INTENT(IN) :: time
-        Integer, INTENT(IN) :: il,ih,jl,jh
+        Integer(kind = 8), INTENT(IN) :: il,ih,jl,jh
         Real(kind=8), INTENT(INOUT) :: T(il:ih,jl:jh)
 
         Real(kind=8) :: Told(il:ih,jl:jh), Tn(il:ih,jl:jh)
@@ -150,7 +150,7 @@ module jacobi
         Real(kind = 8), INTENT(INOUT) :: T(nx,ny)
 
         Real(kind = 8) :: res(nx,ny)
-        Integer :: i,j,ii, niter_precon, il,jl,ih,jh
+        Integer(kind = 8) :: i,j,ii, niter_precon, il,jl,ih,jh
 
         ! Setting number of preconditioning iterations
         niter_precon = 5

@@ -23,7 +23,7 @@ module residuals
         real(kind=8), dimension(nx,ny), INTENT(IN) :: aw,ae,an,as,ap,b,x
         real(kind=8), dimension(nx,ny), INTENT(OUT) :: res
         
-        INTEGER :: i,j
+        INTEGER(kind = 8) :: i,j
         
         ! Initialising residual
         res(:,:) = 0.0
@@ -44,7 +44,7 @@ module residuals
     subroutine respar(aw,ae,an,as,ap,b,T,il,ih,jl,jh,res)
 
         ! Initialising variables
-        Integer, INTENT(IN) :: il,ih,jl,jh
+        Integer(kind = 8), INTENT(IN) :: il,ih,jl,jh
         real(kind=8), dimension(il:ih,jl:jh), INTENT(IN) :: aw,ae,an,as,ap,b,T
         real(kind=8), dimension(il:ih,jl:jh), INTENT(OUT) :: res
         

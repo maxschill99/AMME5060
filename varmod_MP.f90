@@ -13,7 +13,7 @@ MODULE variablemodule
 	INTEGER :: nx, ny, iunit, Ntsteps
 	
 	! Problem variables / arrays
-	CHARACTER(LEN=5) :: topology, solving
+	CHARACTER(LEN=5) :: topology, solvertype
 	REAL (KIND = 8), ALLOCATABLE :: x(:), y(:)
 	
 	! Partitioning and node/indices
