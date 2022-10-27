@@ -15,7 +15,7 @@ USE variablemodule
 
         Real(kind = 8), allocatable, INTENT(INOUT) :: an(:,:), as(:,:), ae(:,:), aw(:,:), ap(:,:), &
                                                       b(:,:), T(:,:), Told(:,:), Tn(:,:), res(:,:)
-        Integer, INTENT(IN) :: il,ih,jl,jh
+        Integer(kind = 8), INTENT(IN) :: il,ih,jl,jh
 
         allocate(an(il:ih,jl:jh))
         allocate(as(il:ih,jl:jh))
@@ -46,7 +46,7 @@ USE variablemodule
         ! jl = ind_low_y
         ! jh = ind_high_y
 
-        Integer, INTENT(IN) :: il,ih,jl,jh
+        Integer(kind = 8), INTENT(IN) :: il,ih,jl,jh
         ! Real(kind = 8), INTENT(OUT) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny)
         Real(kind = 8), INTENT(OUT) :: an(il:ih,jl:jh), as(il:ih,jl:jh), ae(il:ih,jl:jh), aw(il:ih,jl:jh), &
          ap(il:ih,jl:jh), b(il:ih,jl:jh), T(il:ih,jl:jh)
@@ -54,6 +54,7 @@ USE variablemodule
         
         ! Real(kind = 8) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny)
         ! Real(kind = 8) :: Tin(nx,ny), Tout(nx,ny)
+        Real(kind = 8), allocatable :: x(:), y(:)
 
 
         ! Computing A and B matrices - need matrices for conjugate gradient method
@@ -71,8 +72,8 @@ USE variablemodule
             end do
         end do
 
-        allocate(x(il:ih))
-        allocate(y(jl:jh))
+        allocate(x(jl:jh))
+        allocate(y(il:ih))
 
         ! x is in the j direction, y is in the i direction
         do i = il,ih

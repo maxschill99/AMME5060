@@ -19,11 +19,14 @@ program test
     ! ! Variables newly defined in this program
     Real(kind = 8), allocatable :: T(:,:)
     Real(kind = 8), allocatable :: an(:,:), as(:,:), ae(:,:), aw(:,:), ap(:,:), b(:,:)
-    Integer(kind = 4) :: il, ih, jl, jh, npp, iter
+    Integer(kind = 8) :: il, ih, jl, jh, npp, iter
 
     ! Solution solver variables
     Real(kind = 8) :: rcurrent, rc, time
-    Real(kind = 8), allocatable :: Told(:,:), Tn(:,:), resmat(:,:)
+    Real(kind = 8), allocatable :: Told(:,:), Tn(:,:), resmat(:,:), Ttemp(:,:), Ttot(:,:)
+
+    ! Gathering variables for final solution
+
 
     il = 0; ih = 0; jl = 0; jh = 0
 
@@ -53,11 +56,11 @@ program test
     if (nprocs==2) then
         if (pid==0) then
             il = 1
-            ih = ny/2
+            ih = ny
             jl = 1
             jh = nx/2
         else
-            il = ny/2 + 1
+            il = 1
             ih = ny
             jl = nx/2 + 1
             jh = nx
@@ -74,78 +77,85 @@ program test
     ! Doesnt at the moment with processors more than 1 because the partitioning is wrong
     call solutioninit(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
     write(*,1600) T
+   
 
     ! !-----------------------------------------------------------------------------------------------------!
     ! !-----------------------------------------------------------------------------------------------------!
-    ! Computation
+    ! ! Computation
 
-    ! Solution loop variable initialisation
-    ! Inititialising old temperature array
-    Told(:,:) = 0
+    ! ! Solution loop variable initialisation
+    ! ! Inititialising old temperature array
+    ! allocate(Told(il:ih,jl:jh))
+    ! allocate(Tn(il:ih,jl:jh))
+    ! Told(:,:) = 0
+    ! Tn(:,:) = 0
 
-    ! Initialising time counter
-    time = 0
-    iter = 0
-
-    ! Begin the solution loop
-    ! do while ((t<ttot).and.(r>rmax))
-    do while (time<t_final)
+    ! ! Initialising time counter
+    ! time = 0
+    ! iter = 0
 
 
-        ! Calculation of solution using only jacobi solver
-        call jac(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
+    ! ! Begin the solution loop
+    ! ! do while ((t<ttot).and.(r>rmax))
+    ! do while (time<t_final)
 
-        ! COMMUNICATION
+
+    !     ! Calculation of solution using only jacobi solver
+    !     call jac(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
+
+    !     ! COMMUNICATION - COPY FROM CLARA's PARTITIONING CODE TEST (need to update correct indices in comms)
             
 
-        ! computing residuals
-        call respar(aw,ae,an,as,ap,b,T,il,ih,jl,jh,resmat)
+    !     ! computing residuals
+    !     call respar(aw,ae,an,as,ap,b,T,il,ih,jl,jh,resmat)
 
-        ! Calculate Domain averaged residual for stopping critterion
-        rcurrent = SUM(SUM(ABS(res(il:ih,jl:jh)),1),1) / ((nx-2)*(ny-2))
+    !     ! Calculate Domain averaged residual for stopping critterion
+    !     rcurrent = SUM(SUM(ABS(resmat(il:ih,jl:jh)),1),1) / ((nx-2)*(ny-2))
 
-        ! Combining all residuals on each processor and sending to processor 0
-        call MPI_REDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
+    !     ! Combining all residuals on each processor and sending to processor 0
+    !     call MPI_REDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
 
-        if (pid == 0) then
-            rc = rc/nprocs
-        end if
+    !     if (pid == 0) then
+    !         rc = rc/nprocs
+    !     end if
 
-        call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
-
-
-        ! Printing to screen after a certain number of iterations
-        if (mod(iter,100).eq.0) then
-            write(*,*) '      iter', '      res'
-            write(*,*) iter, rcurrent
-        end if
-
-        ! updating old and new temperature values
-        Told = T
-        T = Tn
-
-        ! updating counter
-        time = time + dt
-        iter = iter + 1
-
-    end do
+    !     call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
 
 
+    !     ! Printing to screen after a certain number of iterations
+    !     if (mod(iter,100).eq.0) then
+    !         write(*,*) '      iter', '      res'
+    !         write(*,*) iter, rc
+    !     end if
+
+    !     ! updating old and new temperature values
+    !     Told = T
+    !     T = Tn
+
+    !     ! updating counter
+    !     time = time + dt
+    !     iter = iter + 1
+
+    ! end do
 
 
+    ! ! Calculation of solution using Conjugate Gradient Method
+    ! ! call CGSolve(an,as,ae,aw,ap,b,T)
 
-
-    ! Calculation of solution using Conjugate Gradient Method
-    ! call CGSolve(an,as,ae,aw,ap,b,T)
-
-    ! !-----------------------------------------------------------------------------------------------------!
-    ! !-----------------------------------------------------------------------------------------------------!
-    !! Getting final total temp array
+    ! ! !-----------------------------------------------------------------------------------------------------!
+    ! ! !-----------------------------------------------------------------------------------------------------!
+    ! !! Getting final total temp array
     ! Gathering all temperature areas to processor 0
-    ! Ttemp = T(1:ny,il:ih)
-    ! call MPI_GATHER(Ttemp,ny*npp,MPI_DOUBLE_PRECISION,ttot,ny*npp,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
+    allocate(Ttemp(il:ih,jl:jh))
+    allocate(Ttot(nx,ny))
+
+    write(*,*) size(Ttemp), (ih-il+1)*(jh-jl+1), size(Ttot)
+    Ttemp = T
+    Ttot(:,:) = 0
+    call MPI_GATHER(Ttemp,(ih-il+1)*(jh-jl+1),MPI_DOUBLE_PRECISION,Ttot,(ih-il+1)*(jh-jl+1), &
+                    MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
     
-    ! write(*,1600) T
+    write(*,1600) Ttot
     
     
     ! NOTE: Need to update this to match the number of spatial divisions (nx)
