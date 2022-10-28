@@ -11,3 +11,10 @@ outProg: residuals.f90 jacobi.f90 varmod_MP.f90 CGSolver.f90 maxtest.f90
 # Testing CG Solver
 gfortran varmod_MP.f90 residuals.f90 jacobi.f90 CGSolver.f90 maxtest.f90 -o test1.exe # serial
 mpif90 varmod_MP.f90 residuals.f90 jacobi.f90 CGSolver.f90 maxtest.f90 -o test1.exe # mpi
+
+
+
+
+
+# Main compilation
+mpif90 varmod_MP.f90 nodemod_MP.f90 partitioning_MP.f90 residuals.f90 init.f90 jacobi.f90 main.f90 -o test1.exe
