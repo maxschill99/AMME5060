@@ -193,8 +193,7 @@ resil = node_low_x; resih = node_high_x; resjl = node_low_y; resjh = node_high_y
         CASE ("jac")
             ! Begin the solution loop
             ! do while ((t<ttot).and.(r>rmax))
-            ! do while (time<t_final)
-			do i = 1,1000
+            do while (time<t_final)
 
                 ! Calculation of solution using only jacobi solver
                 call jac(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
@@ -250,7 +249,7 @@ resil = node_low_x; resih = node_high_x; resjl = node_low_y; resjh = node_high_y
 
 							
 
-                ! ! computing residuals
+                ! computing residuals
                 ! call respar(aw,ae,an,as,ap,b,T,resil,resih,resjl,resjh,resmat)
 
 				! 	write(*,*) 'hi'
@@ -268,10 +267,22 @@ resil = node_low_x; resih = node_high_x; resjl = node_low_y; resjh = node_high_y
                 ! call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
 
 
+ 
                 ! Printing to screen after a certain number of iterations
                 if (mod(iter,100).eq.0) then
                     write(*,*) '      iter', '      res'
                     write(*,*) iter, rc
+
+									! CLARAAAAA TECPLOT STUFF
+
+										! --------------------------------------------------------------------------------------- 
+										!     _____     ____
+										!    /      \  |  o | 
+										!   |        |/ ___\|                slab decomposition subroutine
+										!   |_________/     
+										!   |_|_| |_|_|
+										!	  
+										! ---------------------------------------------------------------------------------------
                 end if
 
                 ! updating old and new temperature values
