@@ -1,5 +1,6 @@
 module residuals
 
+    ! NOTE THAT THE INPUT OF THIS SHOULD BE THE NODES IN THE PROCESSOR DOMAIN EXCLUDING GHOST NODES
     ! Calling modules
     USE variablemodule
     ! USE jacobi

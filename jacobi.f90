@@ -40,15 +40,15 @@ module jacobi
 
 
         if (time == 0) then
-            do j = jl,jh
-                do i = il,ih
+            do j = jl+1,jh-1
+                do i = il+1,ih-1
                     Tn(i,j) = (T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
                         + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j))/2
                 end do
             end do
         else
-            do j = jl,jh
-                do i = il,ih
+            do j = jl+1,jh-1
+                do i = il+1,ih-1
                     Tn(i,j) = T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
                         + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j) - Told(i,j)
                 end do

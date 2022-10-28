@@ -16,18 +16,18 @@ program test
 
     ! Initialising variables
 
-    ! ! Variables newly defined in this program
-    Real(kind = 8), allocatable :: T(:,:)
-    Real(kind = 8), allocatable :: an(:,:), as(:,:), ae(:,:), aw(:,:), ap(:,:), b(:,:)
-    Integer(kind = 8) :: il, ih, jl, jh, npp, iter
+    ! ! ! Variables newly defined in this program
+    ! Real(kind = 8), allocatable :: T(:,:)
+    ! Real(kind = 8), allocatable :: an(:,:), as(:,:), ae(:,:), aw(:,:), ap(:,:), b(:,:)
+    ! Integer(kind = 8) :: il, ih, jl, jh, npp, iter
 
-    ! Solution solver variables
-    Real(kind = 8) :: rcurrent, rc, time
-    Real(kind = 8), allocatable :: Told(:,:), Tn(:,:), resmat(:,:)
+    ! ! Solution solver variables
+    ! Real(kind = 8) :: rcurrent, rc, time
+    ! Real(kind = 8), allocatable :: Told(:,:), Tn(:,:), resmat(:,:)
 
-    ! Gathering variables for final solution
-    Real(kind = 8), allocatable :: Ttemp(:,:), Ttot(:,:)
-    Real(kind = 8) :: numcount
+    ! ! Gathering variables for final solution
+    ! Real(kind = 8), allocatable :: Ttemp(:,:), Ttot(:,:)
+    ! Real(kind = 8) :: numcount
 
     il = 0; ih = 0; jl = 0; jh = 0
 
@@ -94,7 +94,7 @@ program test
     iter = 0
 
     ! Choosing the solver --> jac, redblack, conj
-    solvertype = 'test'
+    solvertype = 'jac'
 
     SELECT CASE (solvertype)
 
@@ -203,9 +203,12 @@ program test
 
     END SELECT
 
+    write(*,*) 'Output after solver'
+    write(*,1600) T
+
     ! ! !-----------------------------------------------------------------------------------------------------!
     ! ! !-----------------------------------------------------------------------------------------------------!
-    ! !! Getting final total temp array
+    ! !! Getting final total temp array - SHOULD ALSO BE COVERED BY CLARA
     
     ! Gathering all temperature areas to processor 0
     allocate(Ttemp(il:ih,jl:jh))
@@ -223,6 +226,7 @@ program test
                     MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
 
     if (pid == 0) then
+        write(*,*) 'Output after gathering data'
         write(*,1600) Ttot
     end if
     

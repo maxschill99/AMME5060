@@ -41,6 +41,19 @@ MODULE variablemodule
 	INTEGER :: ind_low_east1, ind_low_east2, ind_low_west1, ind_low_west2
 	INTEGER :: ind_high_east1, ind_high_east2, ind_high_west1, ind_high_west2, ignore_val
 	INTEGER :: ncalcpoints_x, ncalcpoints_y, ncalcpoints_y_east1, ncalcpoints_y_east2, ncalcpoints_y_west1, ncalcpoints_y_west2
+
+	! Initialising solver variables
+    Real(kind = 8), allocatable :: T(:,:)
+    Real(kind = 8), allocatable :: an(:,:), as(:,:), ae(:,:), aw(:,:), ap(:,:), b(:,:)
+    Integer(kind = 8) :: il, ih, jl, jh, npp, iter, resil, resih, resjl, resjh
+
+    ! Solution solver variables
+    Real(kind = 8) :: rcurrent, rc, time
+    Real(kind = 8), allocatable :: Told(:,:), Tn(:,:), resmat(:,:)
+
+    ! Gathering variables for final solution
+    Real(kind = 8), allocatable :: Ttemp(:,:), Ttot(:,:)
+    Real(kind = 8) :: numcount
 	
 	! -------------------------------------------------------------------------------------------------------------------------------
 	! `&&&` is used as a tag in comments to come back to something later. At end of assignment we can ctrlF for &&& and fix those things

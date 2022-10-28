@@ -14,6 +14,10 @@ Implement communication
 Initialise variables with parallelisation
 get it working with simple parallelisation independent of claras code and then implement claras variables
 copy maxtest code into main.f90
+need to get comms working in cg solver
+copy comms into maxtest.f90
+check i = il,ih and j = jl,jh arent going outside of matrix bounds
+dot product in conjugate gradient
 
 
 Conjugate gradient method
