@@ -14,7 +14,7 @@ PROGRAM MAIN
 ! -------------------------------------------------------------------------------	
 !| CODE CASES																	 |
 	topology = "slabs" 	!														 |
-!|	! Other options: "cart" and "slabs" 	"graph"						 			 |
+!|	! Other options: "cart" and "slabs" and "graph"						 		 |
 ! -------------------------------------------------------------------------------
 
 ! 	INITIALISE MPI

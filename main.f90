@@ -17,9 +17,11 @@ PROGRAM MAIN
 	CALL intialise()
 
 ! -------------------------------------------------------------------------------	
-!| CODE CASES																	 |
-	topology = "slabs" 	!														 |
-!|	! Other options: "cart" and "slabs" 							 			 |
+!| CODE CASES										───▄▀▀▀▄▄▄▄▄▄▄▀▀▀▄───		 |
+	topology = "slabs" 	!							───█▒▒░░░░░░░░░▒▒█───		 |
+!|		Options: "graph" "cart" "slabs" 			────█░░█░░░░░█░░█────		 |
+    solvertype = "jac"	!							─▄▄──█░░░▀█▀░░░█──▄▄─		 |
+!| 		Options: "jac", "redblack", "conj"			█░░█─▀▄░░░░░░░▄▀─█░░█		 |
 ! -------------------------------------------------------------------------------
 
 ! 	INITIALISE MPI
@@ -138,8 +140,6 @@ write(*,*) T
     time = 0
     iter = 0
 
-    ! Choosing the solver --> jac, redblack, conj
-    solvertype = 'jac'
 
 	ALLOCATE( status_array(MPI_STATUS_SIZE, 12) )
 	ALLOCATE( request_array(12) )
