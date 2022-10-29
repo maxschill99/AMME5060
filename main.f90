@@ -325,11 +325,11 @@ write(*,*) T
 	
 	! ! Max temperature. Can take max over ghost nodes too because it doesn't matter - after global max.
 	! CALL MPI_REDUCE(maxval(T), &
-	! T_max, 1, MPI_DOUBLE_PRECISION, MPI_MAX, 0, COMM_CART, ierr)
+	! T_max, 1, MPI_DOUBLE_PRECISION, MPI_MAX, 0, COMM_TOPO, ierr)
 	
 	! ! Average temperature. Only calculate average over nodes considered by each processor. Ignore ghost nodes.
 	! CALL MPI_REDUCE( (1/(DBLE(nx)*DBLE(ny))) * sum( T(node_low_y:node_high_y, node_low_x:node_high_x) ), &
- 	! T_avg, 1, MPI_DOUBLE_PRECISION, MPI_SUM, 0, COMM_CART, ierr)
+ 	! T_avg, 1, MPI_DOUBLE_PRECISION, MPI_SUM, 0, COMM_TOPO, ierr)
 	
 	! IF (pid .EQ. 0) THEN 
 		! WRITE(*,'(A35, f10.8, A16)') "Maximum temperature across domain: ", T_max, " degrees Celcius"
@@ -368,13 +368,13 @@ write(*,*) T
 
 	! Gather subarray information from all processors
 		! Subarray row sizes
-		CALL MPI_GATHER( subarray_Nrows, 1, MPI_INTEGER, subarray_rows_array, 1, MPI_INTEGER, 0, COMM_CART, ierr )
+		CALL MPI_GATHER( subarray_Nrows, 1, MPI_INTEGER, subarray_rows_array, 1, MPI_INTEGER, 0, COMM_TOPO, ierr )
 		! Subarray column sizes
-		CALL MPI_GATHER( subarray_Ncols, 1, MPI_INTEGER, subarray_cols_array, 1, MPI_INTEGER, 0, COMM_CART, ierr )
+		CALL MPI_GATHER( subarray_Ncols, 1, MPI_INTEGER, subarray_cols_array, 1, MPI_INTEGER, 0, COMM_TOPO, ierr )
 		! Start row location in the final matrix (minus 1 because start location starts at zero)
-		CALL MPI_GATHER( node_low_y-1, 	 1, MPI_INTEGER, subarray_row_start,  1, MPI_INTEGER, 0, COMM_CART, ierr )
+		CALL MPI_GATHER( node_low_y-1, 	 1, MPI_INTEGER, subarray_row_start,  1, MPI_INTEGER, 0, COMM_TOPO, ierr )
 		! Start column location in the final matrix (minus 1 because start location starts at zero)
-		CALL MPI_GATHER( node_low_x-1, 	 1, MPI_INTEGER, subarray_col_start,  1, MPI_INTEGER, 0, COMM_CART, ierr )
+		CALL MPI_GATHER( node_low_x-1, 	 1, MPI_INTEGER, subarray_col_start,  1, MPI_INTEGER, 0, COMM_TOPO, ierr )
 		
 			
 	! Pid 0 receiving data and putting into final file
@@ -390,7 +390,7 @@ write(*,*) T
 		
 			! Receiving with this new receiving subarray type
 			CALL MPI_IRECV( Tfinal, 1, RECVSUBBARAY, &
-				i, tag2, COMM_CART, request_array(i+2), ierr)
+				i, tag2, COMM_TOPO, request_array(i+2), ierr)
 		END DO
 
 		CALL MPI_WAITALL(Nprocs+1, request_array, status_array, ierr)
