@@ -3,7 +3,8 @@ PROGRAM MAIN
 ! CALLING MODULES
 	USE variablemodule 		! Contains variable allocation all problem-specific variable values
 	USE nodemodule			! Obtains nodes and indices of the domain considered by each processor
-	USE partitionmodule
+	USE partitionmodule		! Contains subroutines to partition domain and obtain domain info for each processor
+	USE outputmodule		! Creates tec file
 	USE cjgradient
 	USE jacobi
 	USE residuals
@@ -400,12 +401,9 @@ write(*,*) T
 		! x vector of whole domain (could have also done a mpi_gatherv)
 		xtot 	= 0. + dx * [(i, i=0,(nx-1))] ! Implied DO loop used
 		! y vector of whole domain (could have also done a mpi_gatherv)
-		ytot 	= 1. - dy * [(i, i=0,(ny-1))] ! Implied DO loop used
+		ytot 	= 0. + dy * [(i, i=0,(ny-1))] ! Implied DO loop used
 
-		! CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tfinal )
-		
-		! &&&&& is ytot okay?? I think it might need to be swapped 1.-->0., (-)-->(+)
-		! &&&&& T references / temperature array references
+		CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tfinal )
 		
 	END IF
 	
@@ -421,56 +419,3 @@ CALL MPI_FINALIZE(ierr)
 
 
 END PROGRAM MAIN
-
-
-	! ALLOCATE( status_array(MPI_STATUS_SIZE, 12) )
-	! ALLOCATE( request_array(12) )
-	
-	! ! ------- RECEIVE FROM THE RIGHT/EAST, SEND TO THE RIGHT/EAST
-	! ! Receive from the east1, and put it into the space for the ghost node on the east side
-	! CALL MPI_IRECV( T(ind_low_east1:ind_high_east1, ind_high_x), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
-					! east1, tag, COMM_TOPO, request_array(1), ierr)
-	! ! Send to the east1
-	! CALL MPI_ISEND( T(ind_low_east1:ind_high_east1, ind_high_x-1), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
-					! east1, tag, COMM_TOPO, request_array(2), ierr)
-					
-	! ! Receive from the east2, and put it into the space for the ghost node on the east side
-	! CALL MPI_IRECV( T(ind_low_east2:ind_high_east2, ind_high_x), ncalcpoints_y_east2, MPI_DOUBLE_PRECISION, &
-					! east2, tag, COMM_TOPO, request_array(3), ierr)
-	! ! Send to the east2
-	! CALL MPI_ISEND( T(ind_low_east2:ind_high_east2, ind_high_x-1), ncalcpoints_y_east2, MPI_DOUBLE_PRECISION, &
-					! east2, tag, COMM_TOPO, request_array(4), ierr)
-
-
-	! ! ------- RECEIVE FROM THE LEFT/WEST, SEND TO THE LEFT/WEST
-	! ! Receive from the west1, put it into the space for the ghost node on the west side 
-	! CALL MPI_IRECV( T(ind_low_west1:ind_high_west1, ind_low_x), ncalcpoints_y_west1, MPI_DOUBLE_PRECISION, & 
-					! west1, tag, COMM_TOPO, request_array(5), ierr)
-	! ! Send to the west1
-	! CALL MPI_ISEND( T(ind_low_west1:ind_high_west1, ind_low_x+1), ncalcpoints_y_west1, MPI_DOUBLE_PRECISION, &
-					! west1, tag, COMM_TOPO, request_array(6), ierr)
-					
-	! ! Receive from the west2, put it into the space for the ghost node on the west side 
-	! CALL MPI_IRECV( T(ind_low_west2:ind_high_west2, ind_low_x), ncalcpoints_y_west2, MPI_DOUBLE_PRECISION, & 
-					! west2, tag, COMM_TOPO, request_array(7), ierr)
-	! ! Send to the west2
-	! CALL MPI_ISEND( T(ind_low_west2:ind_high_west2, ind_low_x+1), ncalcpoints_y_west2, MPI_DOUBLE_PRECISION, &
-					! west2, tag, COMM_TOPO, request_array(8), ierr)
-					
-	! ! ------- RECEIVE FROM THE NORTH, SEND TO THE NORTH
-	! ! Receive from the north, put it into the space for the ghost node 
-	! CALL MPI_IRECV( T(ind_low_y, ind_low_x+1), 1, NS_ROW_SENDRECV, &
-					! north, tag, COMM_TOPO, request_array(9), ierr)
-	! ! Send to the north
-	! CALL MPI_ISEND( T(ind_low_y+1, ind_low_x+1), 1, NS_ROW_SENDRECV, &
-					! north, tag, COMM_TOPO, request_array(10), ierr)
-	! ! ------- RECEIVE FROM THE SOUTH, SEND TO THE SOUTH
-	! ! Receive from the south, put it into the space for the ghost node 
-	! CALL MPI_IRECV( T(ind_high_y, ind_low_x+1), 1, NS_ROW_SENDRECV, &
-					! south, tag, COMM_TOPO, request_array(11), ierr)
-	! ! Send to the south
-	! CALL MPI_ISEND( T(ind_high_y-1, ind_low_x+1), 1, NS_ROW_SENDRECV, &
-					! south, tag, COMM_TOPO, request_array(12), ierr)
-
-	! ! Wait for data sends to complete before black points start referencing red points
-	! CALL MPI_WAITALL(12, request_array, status_array, ierr)
