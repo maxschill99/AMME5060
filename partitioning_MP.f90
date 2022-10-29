@@ -359,6 +359,39 @@ MODULE partitionmodule
 	
 	END SUBROUTINE cart_partition
 	
+	! ----------------------
+	
+	SUBROUTINE cart_nodesindices()
+	
+		IMPLICIT NONE
+		
+		east2 = -2 ! MPI_PROC_NULL
+		west2 = -2 ! MPI_PROC_NULL
+			
+		! Nodes and indices in x
+		CALL get_nodes(nx, dims(1), coords(1), node_low_x, node_high_x)
+		CALL get_indices(dims(1), coords(1), node_low_x, node_high_x, ind_low_x, ind_high_x, ncalcpoints_x)
+		! Nodes and indices in y
+		CALL get_nodes(ny, dims(2), coords(2), node_low_y, node_high_y)
+		CALL get_indices(dims(2), coords(2), node_low_y, node_high_y, ind_low_y, ind_high_y, ncalcpoints_y)
+		
+		! Sends/Recvs that happen			
+		ind_low_east1 		= ind_low_y+1
+		ind_high_east1 		= ind_high_y-1
+		ncalcpoints_y_east1 = ncalcpoints_y
+		ind_low_west1		= ind_low_y+1
+		ind_high_west1		= ind_high_y-1
+		ncalcpoints_y_west1 = ncalcpoints_y
+		! Sends/Recvs that go to MPI_PROC_NULL since not graph topology
+		ind_low_east2 		= ind_low_east1
+		ind_high_east2 		= ind_high_east1
+		ncalcpoints_y_east2 = ncalcpoints_y_east1	
+		ind_low_west2		= ind_low_west1
+		ind_high_west2		= ind_high_west1
+		ncalcpoints_y_west2 = ncalcpoints_y_west1
+	
+	END SUBROUTINE cart_nodesindices
+	
 	! --------------------------------------------------------------------------------------- 
 	!     _____     ____
 	!    /      \  |  o | 
@@ -383,5 +416,36 @@ MODULE partitionmodule
 		periods = .false.
 		
 	END SUBROUTINE slab_partition
+	
+	SUBROUTINE slab_nodesindices()
+	
+		IMPLICIT NONE
+		
+		east2 = -2 ! MPI_PROC_NULL
+		west2 = -2 ! MPI_PROC_NULL
+			
+		! Nodes and indices in x
+		CALL get_nodes(nx, dims(1), coords(1), node_low_x, node_high_x)
+		CALL get_indices(dims(1), coords(1), node_low_x, node_high_x, ind_low_x, ind_high_x, ncalcpoints_x)
+		! Nodes and indices in y
+		CALL get_nodes(ny, dims(2), coords(2), node_low_y, node_high_y)
+		CALL get_indices(dims(2), coords(2), node_low_y, node_high_y, ind_low_y, ind_high_y, ncalcpoints_y)
+		
+		! Sends/Recvs that happen			
+		ind_low_east1 		= ind_low_y+1
+		ind_high_east1 		= ind_high_y-1
+		ncalcpoints_y_east1 = ncalcpoints_y
+		ind_low_west1		= ind_low_y+1
+		ind_high_west1		= ind_high_y-1
+		ncalcpoints_y_west1 = ncalcpoints_y
+		! Sends/Recvs that go to MPI_PROC_NULL since not graph topology
+		ind_low_east2 		= ind_low_east1
+		ind_high_east2 		= ind_high_east1
+		ncalcpoints_y_east2 = ncalcpoints_y_east1	
+		ind_low_west2		= ind_low_west1
+		ind_high_west2		= ind_high_west1
+		ncalcpoints_y_west2 = ncalcpoints_y_west1	
+	
+	END SUBROUTINE slab_nodesindices
 
 END MODULE partitionmodule

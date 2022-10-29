@@ -63,32 +63,8 @@ PROGRAM MAIN
 			CALL MPI_CART_SHIFT(COMM_TOPO, 0, 1, west1, east1, ierr)
 			CALL MPI_CART_SHIFT(COMM_TOPO, 1, 1, north, south, ierr)
 			
-			east2 = MPI_PROC_NULL
-			west2 = MPI_PROC_NULL
+			CALL cart_nodesindices()
 			
-			! Nodes and indices in x
-			CALL get_nodes(nx, dims(1), coords(1), node_low_x, node_high_x)
-			CALL get_indices(dims(1), coords(1), node_low_x, node_high_x, ind_low_x, ind_high_x, ncalcpoints_x)
-			! Nodes and indices in y
-			CALL get_nodes(ny, dims(2), coords(2), node_low_y, node_high_y)
-			CALL get_indices(dims(2), coords(2), node_low_y, node_high_y, ind_low_y, ind_high_y, ncalcpoints_y)
-			
-			! Sends/Recvs that happen			
-			ind_low_east1 		= ind_low_y+1
-			ind_high_east1 		= ind_high_y-1
-			ncalcpoints_y_east1 = ncalcpoints_y
-			ind_low_west1		= ind_low_y+1
-			ind_high_west1		= ind_high_y-1
-			ncalcpoints_y_west1 = ncalcpoints_y
-			! Sends/Recvs that go to MPI_PROC_NULL since not graph topology
-			ind_low_east2 		= ind_low_east1
-			ind_high_east2 		= ind_high_east1
-			ncalcpoints_y_east2 = ncalcpoints_y_east1	
-			ind_low_west2		= ind_low_west1
-			ind_high_west2		= ind_high_west1
-			ncalcpoints_y_west2 = ncalcpoints_y_west1
-			
-	
 		CASE ("slabs")
 		
 			CALL slab_partition()
@@ -102,30 +78,7 @@ PROGRAM MAIN
 			CALL MPI_CART_SHIFT(COMM_TOPO, 0, 1, west1, east1, ierr)
 			CALL MPI_CART_SHIFT(COMM_TOPO, 1, 1, north, south, ierr)
 			
-			east2 = MPI_PROC_NULL
-			west2 = MPI_PROC_NULL
-			
-			! Nodes and indices in x
-			CALL get_nodes(nx, dims(1), coords(1), node_low_x, node_high_x)
-			CALL get_indices(dims(1), coords(1), node_low_x, node_high_x, ind_low_x, ind_high_x, ncalcpoints_x)
-			! Nodes and indices in y
-			CALL get_nodes(ny, dims(2), coords(2), node_low_y, node_high_y)
-			CALL get_indices(dims(2), coords(2), node_low_y, node_high_y, ind_low_y, ind_high_y, ncalcpoints_y)
-			
-			! Sends/Recvs that happen			
-			ind_low_east1 		= ind_low_y+1
-			ind_high_east1 		= ind_high_y-1
-			ncalcpoints_y_east1 = ncalcpoints_y
-			ind_low_west1		= ind_low_y+1
-			ind_high_west1		= ind_high_y-1
-			ncalcpoints_y_west1 = ncalcpoints_y
-			! Sends/Recvs that go to MPI_PROC_NULL since not graph topology
-			ind_low_east2 		= ind_low_east1
-			ind_high_east2 		= ind_high_east1
-			ncalcpoints_y_east2 = ncalcpoints_y_east1	
-			ind_low_west2		= ind_low_west1
-			ind_high_west2		= ind_high_west1
-			ncalcpoints_y_west2 = ncalcpoints_y_west1
+			CALL slab_nodesindices()
 	
 		CASE DEFAULT 
 		  WRITE(*,*) "No topology selected or incorrect selection"
