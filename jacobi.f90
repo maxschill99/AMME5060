@@ -9,8 +9,6 @@ module jacobi
     ! Calling modules
     USE variablemodule
     USE residuals
-    ! USE nodemodule
-    ! USE partitionmodule
 
 
     IMPLICIT NONE
@@ -26,34 +24,25 @@ module jacobi
     !-------------------------------------------------------------------------------------------!
     !-------------------------------------------------------------------------------------------!
     ! parallel jacobi solver
-    SUBROUTINE jac(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
+    SUBROUTINE jac(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
 
 
         ! Defining variables
         Real(kind=8), INTENT(IN), dimension(il:ih,jl:jh) :: an,as,ae,aw,ap,b
-        Real(kind=8), INTENT(IN) :: time
         Integer(kind = 8), INTENT(IN) :: il,ih,jl,jh
         Real(kind=8), INTENT(INOUT) :: T(il:ih,jl:jh)
 
-        Real(kind = 8) :: Told(il:ih,jl:jh), Tn(il:ih,jl:jh)
+        Real(kind = 8) :: Tn(il:ih,jl:jh)
         Integer :: i,j
 
+        do j = jl+1,jh-1
+            do i = il+1,ih-1
+                Tn(i,j) = T(i+1,j)*an(i,j) + T(i-1,j)*as(i,j) + T(i,j+1)*ae(i,j) &
+                    + T(i,j-1)*aw(i,j) + T(i,j)*ap(i,j)           
+            end do
+        end do
 
-        if (time == 0) then
-            do j = jl+1,jh-1
-                do i = il+1,ih-1
-                    Tn(i,j) = (T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
-                        + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j))/2
-                end do
-            end do
-        else
-            do j = jl+1,jh-1
-                do i = il+1,ih-1
-                    Tn(i,j) = T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
-                        + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j) - Told(i,j)
-                end do
-            end do
-        end if
+        T = Tn
 
     END SUBROUTINE jac
 
@@ -64,74 +53,50 @@ module jacobi
     !-------------------------------------------------------------------------------------------!
     ! parallel redblack solver
     ! red nodes
-    SUBROUTINE rednodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
+    SUBROUTINE rednodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
 
         ! Defining variables
         Real(kind=8), INTENT(IN), dimension(il:ih,jl:jh) :: an,as,ae,aw,ap,b
-        Real(kind=8), INTENT(IN) :: time
         Integer(kind = 8), INTENT(IN) :: il,ih,jl,jh
         Real(kind=8), INTENT(INOUT) :: T(il:ih,jl:jh)
 
-        Real(kind=8) :: Told(il:ih,jl:jh), Tn(il:ih,jl:jh)
+        Real(kind=8) :: Tn(il:ih,jl:jh)
         Integer :: i,j
 
+        ! do j = 2,(ny-1),2
+        do j = jl+1,jh-1,2
+            ! do i = 2,(nx-1),2
+            do i = il+1,ih-1,2
+                Tn(i,j) = T(i+1,j)*an(i,j) + T(i-1,j)*as(i,j) + T(i,j+1)*ae(i,j) &
+                    + T(i,j-1)*aw(i,j) + T(i,j)*ap(i,j)
+            end do
+        end do
 
-        if (time == 0) then
-            ! RED NODES CALCULATION
-            do j = 2,(ny-1),2
-            ! do j = jl,jh,2
-                do i = 2,(nx-1),2
-                ! do i = il,ih,2
-                    Tn(i,j) = (T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
-                        + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j))/2
-                end do
-            end do
-        else
-            do j = 2,(ny-1),2
-            ! do j = jl,jh,2
-                do i = 2,(nx-1),2
-                ! do i = il,ih,2
-                    Tn(i,j) = T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
-                        + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j) - Told(i,j)
-                end do
-            end do
-        end if
+        T = Tn
 
     END SUBROUTINE rednodes
 
     ! black nodes
-    SUBROUTINE blacknodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
+    SUBROUTINE blacknodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
 
         ! Defining variables
-        Real(kind=8), INTENT(IN), dimension(il:ih,jl:jh) :: an,as,ae,aw,ap,B
-        Real(kind=8), INTENT(IN) :: time
+        Real(kind=8), INTENT(IN), dimension(il:ih,jl:jh) :: an,as,ae,aw,ap,b
         Integer(kind = 8), INTENT(IN) :: il,ih,jl,jh
         Real(kind=8), INTENT(INOUT) :: T(il:ih,jl:jh)
 
-        Real(kind=8) :: Told(il:ih,jl:jh), Tn(il:ih,jl:jh)
+        Real(kind=8) :: Tn(il:ih,jl:jh)
         Integer :: i,j
 
+        ! do j = 3,(ny-1),2
+        do j = jl+2,jh-2,2
+            ! do i = 3,(nx-1),2
+            do i = il+2,ih-2,2
+                Tn(i,j) = T(i+1,j)*an(i,j) + T(i-1,j)*as(i,j) + T(i,j+1)*ae(i,j) &
+                    + T(i,j-1)*aw(i,j) + T(i,j)*ap(i,j)
+            end do
+        end do
 
-        if (time == 0) then
-            ! BLACK NODES CALCULATION
-            do j = 3,(ny-1),2
-            ! do j = jl+1,jh,2
-                do i = 3,(nx-1),2
-                ! do i = il+1,ih,2
-                    Tn(i,j) = (T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
-                        + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j))/2
-                end do
-            end do
-        else
-            do j = 3,(ny-1),2
-            ! do j = jl+1,jh,2
-                do i = 3,(nx-1),2
-                ! do i = il+1,ih,2
-                    Tn(i,j) = T(i+1,j)*ae(i,j) + T(i-1,j)*aw(i,j) + T(i,j+1)*an(i,j) &
-                        + T(i,j-1)*as(i,j) + T(i,j)*ap(i,j) - Told(i,j)
-                end do
-            end do
-        end if
+        T = Tn
 
     END SUBROUTINE blacknodes
 

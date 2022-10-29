@@ -16,7 +16,7 @@ MODULE outputmodule
 	! --------------------------------------------
 
 
-	SUBROUTINE tecplot_2D ( iunit, nx, ny, x, y, T )
+	SUBROUTINE tecplot_2D ( iunit, nx, ny, x, y, T, file_name )
 
 		IMPLICIT NONE
 
@@ -24,8 +24,9 @@ MODULE outputmodule
 		Real ( kind = 8 ) T(ny,nx)
 		Real ( kind = 8 ) x(nx)
 		Real ( kind = 8 ) y(ny)
-
-		Character(80), parameter ::  file_name = 'TecPlot2D.tec'
+		Character(len=1024) :: file_name
+		
+		! Character(80), parameter ::  file_name = 'TecPlot2D.tec'
 
 		open ( unit = iunit, file = file_name, form = 'formatted', access = 'sequential', status = 'replace', iostat = ierr )
 
@@ -40,14 +41,17 @@ MODULE outputmodule
 		write ( iunit, '(a)' ) ' '
 		write ( iunit, '(a,i6,a,i6,a)' ) 'Zone I=', ny, ', J=', nx, ', F=POINT'
 		 
-		do i = 1, nx ! loop through columns left to right
-			do j = 1, ny ! loop through rows top to bottom
-				write ( iunit, '(2f10.3,g15.6)' ) x(i), y(j), T(j,i)
+		do j = 1, ny ! loop through columns left to right
+			do i = 1, nx ! loop through rows top to bottom
+				write ( iunit, '(2f10.3,g15.6)' ) x(j), y(i), T(i,j)
 			end do
 		end do
 		  
 		close ( unit = iunit )
 
 	END SUBROUTINE tecplot_2D
+
+
+
 	
 END MODULE outputmodule

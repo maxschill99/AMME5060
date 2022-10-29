@@ -17,17 +17,17 @@ program test
     ! Initialising variables
 
     ! ! Variables newly defined in this program
-    Real(kind = 8), allocatable :: T(:,:)
-    Real(kind = 8), allocatable :: an(:,:), as(:,:), ae(:,:), aw(:,:), ap(:,:), b(:,:)
-    Integer(kind = 8) :: il, ih, jl, jh, npp, iter
+    ! Real(kind = 8), allocatable :: T(:,:)
+    ! Real(kind = 8), allocatable :: an(:,:), as(:,:), ae(:,:), aw(:,:), ap(:,:), b(:,:)
+    ! Integer(kind = 8) :: il, ih, jl, jh, npp, iter
 
-    ! Solution solver variables
-    Real(kind = 8) :: rcurrent, rc, time
-    Real(kind = 8), allocatable :: Told(:,:), Tn(:,:), resmat(:,:)
+    ! ! Solution solver variables
+    ! Real(kind = 8) :: rcurrent, rc, time
+    ! Real(kind = 8), allocatable :: Told(:,:), Tn(:,:), resmat(:,:)
 
-    ! Gathering variables for final solution
-    Real(kind = 8), allocatable :: Ttemp(:,:), Ttot(:,:)
-    Real(kind = 8) :: numcount
+    ! ! Gathering variables for final solution
+    ! Real(kind = 8), allocatable :: Ttemp(:,:), Ttot(:,:)
+    ! Real(kind = 8) :: numcount
 
     il = 0; ih = 0; jl = 0; jh = 0
 
@@ -67,7 +67,7 @@ program test
             jh = nx
         end if
     end if
-    write(*,*) pid, il,ih, jl,jh
+    ! write(*,*) pid, il,ih, jl,jh
 
     ! !-----------------------------------------------------------------------------------------------------!
     ! !-----------------------------------------------------------------------------------------------------!
@@ -77,7 +77,7 @@ program test
     ! Initialising boundary conditions on temp array
     ! Doesnt at the moment with processors more than 1 because the partitioning is wrong
     call solutioninit(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
-    write(*,1600) T
+    ! write(*,1600) T
    
 
     ! !-----------------------------------------------------------------------------------------------------!
@@ -101,40 +101,42 @@ program test
         ! jacobi solver
         CASE ("jac")
             ! Begin the solution loop
-            ! do while ((t<ttot).and.(r>rmax))
-            do while (time<t_final)
+            ! do while ((time<t_final).and.(rc>res_max))
+            do while (time<50)
 
                 ! Calculation of solution using only jacobi solver
-                call jac(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
+                call jac(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
 
                 ! COMMUNICATION - COPY FROM CLARA's PARTITIONING CODE TEST (need to update correct indices in comms)
+                write(*,*) 'new loop'
+                ! write(*,1600) T
+                write(*,*) time, iter
                     
 
                 ! computing residuals
                 call respar(aw,ae,an,as,ap,b,T,il,ih,jl,jh,resmat)
 
                 ! Calculate Domain averaged residual for stopping critterion
-                rcurrent = SUM(SUM(ABS(resmat(il:ih,jl:jh)),1),1) / ((nx-2)*(ny-2))
+                rcurrent = SUM(SUM(ABS(resmat(il:ih,jl:jh)),1),1) / ((ih-il+1)*(jh-jl+1))
 
                 ! Combining all residuals on each processor and sending to processor 0
                 call MPI_REDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
 
-                if (pid == 0) then
+                if (pid.eq.0) then
                     rc = rc/nprocs
                 end if
 
                 call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
 
+                write(*,*) rc
 
-                ! Printing to screen after a certain number of iterations
-                if (mod(iter,100).eq.0) then
-                    write(*,*) '      iter', '      res'
-                    write(*,*) iter, rc
-                end if
 
-                ! updating old and new temperature values
-                Told = T
-                T = Tn
+                ! ! Printing to screen after a certain number of iterations
+                ! if (mod(iter,100).eq.0) then
+                !     write(*,*) '      iter', '      res'
+                !     write(*,*) iter, rc
+                ! end if
+
 
                 ! updating counter
                 time = time + dt
@@ -150,12 +152,12 @@ program test
             do while (time<t_final)
 
                 ! calculation of red nodes
-                call rednodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
+                call rednodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
 
                 ! COMMUNICATION of red nodes
 
                 ! calculation of black nodes
-                call blacknodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
+                call blacknodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
 
                 ! COMMUNICATION of black nodes
                     
@@ -204,36 +206,40 @@ program test
     END SELECT
 
     write(*,*) 'Output after solver'
-    write(*,1600) T
+    ! write(*,1600) T
+    ! write(*,*) iter
+
+    ! write(*,*) 'residual matrix'
+    ! write(*,1600) resmat
 
     ! ! !-----------------------------------------------------------------------------------------------------!
     ! ! !-----------------------------------------------------------------------------------------------------!
     ! !! Getting final total temp array - SHOULD ALSO BE COVERED BY CLARA
     
-    ! Gathering all temperature areas to processor 0
-    allocate(Ttemp(il:ih,jl:jh))
-    ! allocate(Ttot(nx,ny))
-    allocate(Ttot(1,4))
+    ! ! Gathering all temperature areas to processor 0
+    ! allocate(Ttemp(il:ih,jl:jh))
+    ! ! allocate(Ttot(nx,ny))
+    ! allocate(Ttot(1,4))
 
-    ! write(*,*) size(Ttemp), (ih-il+1)*(jh-jl+1), size(Ttot)
-    Ttemp = T
-    Ttot(:,:) = 0
-    numcount = real((ih-il+1)*(jh-jl+1)) ! Cannot get this working for an arbitrary number of procs atm
-    write(*,*) numcount
-    ! call MPI_GATHER(Ttemp,numcount,MPI_DOUBLE_PRECISION,Ttot,numcount, &
+    ! ! write(*,*) size(Ttemp), (ih-il+1)*(jh-jl+1), size(Ttot)
+    ! Ttemp = T
+    ! Ttot(:,:) = 0
+    ! numcount = real((ih-il+1)*(jh-jl+1)) ! Cannot get this working for an arbitrary number of procs atm
+    ! write(*,*) numcount
+    ! ! call MPI_GATHER(Ttemp,numcount,MPI_DOUBLE_PRECISION,Ttot,numcount, &
+    ! !                 MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
+    ! call MPI_GATHER(Ttemp,2,MPI_DOUBLE_PRECISION,Ttot,2, &
     !                 MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
-    call MPI_GATHER(Ttemp,2,MPI_DOUBLE_PRECISION,Ttot,2, &
-                    MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
 
-    if (pid == 0) then
-        write(*,*) 'Output after gathering data'
-        write(*,1600) Ttot
-    end if
+    ! if (pid == 0) then
+    !     write(*,*) 'Output after gathering data'
+    !     write(*,1600) Ttot
+    ! end if
     
     
     ! NOTE: Need to update this to match the number of spatial divisions (nx)
     1100 FORMAT(8(F20.10,1x))
-    1600 FORMAT(5(F14.8,1x))
+    1600 FORMAT(9(F10.6,1x))
     1400 FORMAT(8(F14.8,1x))
     1200 FORMAT(I2.1,I2.1,6(F8.4,1x))
     1300 FORMAT(I2.1,6(F10.8,1x))

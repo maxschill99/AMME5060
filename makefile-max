@@ -3,7 +3,7 @@ F90 = gfortran
 outProg: residuals.f90 jacobi.f90 varmod_MP.f90 maxtest.f90
 
 # Testing pure jacobi
-mpif90 outputmod_MP.f90 varmod_MP.f90 residuals.f90 init.f90 jacobi.f90 maxtest.f90 -o test1.exe
+mpif90 varmod_MP.f90 residuals.f90 init.f90 jacobi.f90 maxtest.f90 -o test1.exe
 
 
 outProg: residuals.f90 jacobi.f90 varmod_MP.f90 CGSolver.f90 maxtest.f90

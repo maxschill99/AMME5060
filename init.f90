@@ -63,11 +63,11 @@ USE variablemodule
             ! do i = 1,nx
             do i = il,ih
                 ! simplifying variable notation
-                an(i,j) = (2*dt*alpha)/dy**2
-                as(i,j) = (2*dt*alpha)/dy**2
-                ae(i,j) = (2*dt*alpha)/dx**2
-                aw(i,j) = (2*dt*alpha)/dx**2
-                ap(i,j) = (-2/dx**2 - 2/dy**2)*2*dt*alpha
+                an(i,j) = (dt*alpha)/dy**2
+                as(i,j) = (dt*alpha)/dy**2
+                ae(i,j) = (dt*alpha)/dx**2
+                aw(i,j) = (dt*alpha)/dx**2
+                ap(i,j) = 1 - (2*dt*alpha)/dx**2 - (2*dt*alpha)/dy**2
                 b(i,j) = 0
             end do
         end do
@@ -84,12 +84,11 @@ USE variablemodule
         end do
 
         ! Setting solver boundary conditions
-        T(:,:) = 0
+        T(:,:) = 0.0
 
         do j = jl,jh
-            do i = il,ih
-                T(1,j) = sin(pi*x(j))/Lx
-            end do
+            T(1,j) = sin((pi*x(j))/Lx)
+            ! T(1,j) = (-90/Lx)*x(j)*(x(j)-Lx)*exp(-0.545*(Lx/2))
         end do
         T(:,1) = 0
         T(:,nx) = 0

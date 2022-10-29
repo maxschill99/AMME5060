@@ -95,67 +95,157 @@ PROGRAM MAIN
 
 ! ! !-----------------------------------------------------------------------------------------------------!
 ! ! !-----------------------------------------------------------------------------------------------------!
-! Indices for computation
-il = ind_low_x; ih = ind_high_x; jl = ind_low_y; jh = ind_high_y
-resil = node_low_x; resih = node_high_x; resjl = node_low_y; resjh = node_high_y
+		! ┈┈╱▔▔▔▔▔▔▔▏ 
+		! ┈╱ ╭▏╮╭┻┻╮╭┻┻╮╭▏ 
+		! ▕╮╰▏╯┃╭╮┃┃╭╮┃╰▏ 
+		! ▕╯┈▏┈┗┻┻┛┗┻┻┻╮▏ 
+		! ▕╭╮▏╮┈┈┈┈┏━━━╯▏
+		! ▕╰╯▏╯╰┳┳┳┳┳┳╯╭▏ 
+		! ▕┈╭▏╭╮┃┗┛┗┛┃┈╰▏ 
+		! ▕┈╰▏╰╯╰━━━━╯┈┈▏
 
-! INITIALISE TEMP DISTRIBUTION 
+	! ! !-----------------------------------------------------------------------------------------------------!
+	! ! !-----------------------------------------------------------------------------------------------------!
+	! INITIALISATION
+
+	! Indices for computation
+	il = ind_low_y; ih = ind_high_y; jl = ind_low_x; jh = ind_high_x ! Indices for temperature calculations
+	resil = node_low_y; resih = node_high_y; resjl = node_low_x; resjh = node_high_x ! Nodes for residual calculations
+
+	! INITIALISE TEMP DISTRIBUTION 
 	! boundary conditions most pizza like
-! Allocation of variable sizes
-call allocatevars(an,as,ae,aw,ap,b,T,Told,Tn,resmat,il,ih,jl,jh)
+	! Allocation of variable sizes
+	call allocatevars(an,as,ae,aw,ap,b,T,Told,Tn,res,il,ih,jl,jh)
 
-! Initialising boundary conditions on temp array
-call solutioninit(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
-write(*,*) T
 
-! ! !-----------------------------------------------------------------------------------------------------!
-! ! !-----------------------------------------------------------------------------------------------------!
-! Computation
-! SOLVER OUTLINE
-	! outer loop: time stepping
-		! solve for time step n+1 and while r<err
-			! conjugate gradient/jacobi/redback
+	! Initialising boundary conditions on temp array
+	call solutioninit(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
+	! write(*,1600) T
+	! ! Checking what size the A matrix coefficients are
+	! write(*,*) 'A matrix coefficients'
+	! write(*,*) an(1,1), as(1,1), ae(1,1), aw(1,1), ap(1,1)
 
-			! this will involve looping through temperature arrays
-			! end solve for timestep n+1
+	Tinit = T ! Variable for plotting the initial distribution
 
-			! update resduals
+	! INITIAL RESIDUAL
+	! Initialising residual matrix
+	allocate(resmat(resil:resih,resjl:resjh))
+	resmat(:,:) = 0.0
+	! Computing residual matrix
+	call respar(aw,ae,an,as,ap,b,T,resil,resih,resjl,resjh,resmat)
+
+	! Calculate Domain averaged residual for stopping critterion
+	rcurrent = SUM(SUM(ABS(resmat(resil:resih,resjl:resjh)),1),1) / ((resih-resil+1)*(resjh-resjl+1))
+	! write(*,*) rcurrent, rc
+
+	! ! Combining all residuals on each processor and sending to processor 0
+	call MPI_REDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
+
+	! Getting global averaged residual
+	if (pid == 0) then
+		rc = rc/nprocs
+	end if
+
+	! Sendind out global residual to each processor
+	call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
+
+	! Stability criterion check
+	CFL = alpha*(1/(dx**2) + 1/(dy**2))*dt
+	write(*,*) 'Stability criterion: ', CFL
+	if (CFL.GT.0.25) then
+		write(*,*) 'Stability criterion not met, needs to be less than 0.25'
+		STOP
+	elseif (CFL.LT.0) then
+		write(*,*) 'Stability criterion less than 0'
+		STOP
+	end if
+
+	! Initialising time counter and iteration counter
+	time = 0
+	iter = 0
+
+	! ! !-----------------------------------------------------------------------------------------------------!
+	! ! !-----------------------------------------------------------------------------------------------------!
+	! SOLVER OUTLINE
+		! outer loop: time stepping 
+			! solve for time step n+1 and while r<err
+				! conjugate gradient/jacobi/redback
+
+				! this will involve looping through temperature arrays
+				! end solve for timestep n+1
+
+				! update resduals
+			
+			! If statement check that t=somevalue
+			! WRITE TO ONE FILE 
+			
+		! end time stepping
 		
-		! If statement check that t=somevalue
-		! WRITE TO ONE FILE 
-		
-	! end time stepping
-	
-	! Residual module
-	! Solver module - jacobi/gauss seidel
-	! CG module
-	! Call communication
+		! Initialisation module
+		! Residual module
+		! Solver module - jacobi/red-black/Conjugate Gradient
+		! Call communication
 
-	! Solution loop variable initialisation
-    ! Inititialising old temperature array
-    Told(:,:) = 0
-    Tn(:,:) = 0
 
-    ! Initialising time counter
-    time = 0
-    iter = 0
+	!!!!!!!!!!!!!!!!!!!!!!!!!!! COMPUTATION !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	! ░▄▀▀▀▀▄░░▄▄
+	! █░░░░░░▀▀░░█░░░░░░▄░▄
+	! █░║░░░░██░████████████ 
+	! █░░░░░░▄▄░░█░░░░░░▀░▀
+	! ░▀▄▄▄▄▀░░▀▀
 
 
 	ALLOCATE( status_array(MPI_STATUS_SIZE, 12) )
 	ALLOCATE( request_array(12) )
+	ALLOCATE( status_array_gather(MPI_STATUS_SIZE, Nprocs+1) )
+	ALLOCATE( request_array_gather(Nprocs+1) )
+
+	! All processors first create subarrays. These are the final temperature array cleansed of the extra ghost nodes
+	subarray_Nrows = node_high_y-node_low_y + 1
+	subarray_Ncols = node_high_x-node_low_x + 1
+	
+	CALL MPI_Type_create_subarray(2, [ncalcpoints_y+2,ncalcpoints_x+2], [subarray_Nrows,subarray_Ncols], &
+	[node_low_y-ind_low_y, node_low_x-ind_low_x], MPI_ORDER_FORTRAN, MPI_DOUBLE_PRECISION, SENDINGSUBBARAY, ierr)
+	CALL MPI_TYPE_COMMIT(SENDINGSUBBARAY, ierr)
+	
+	! If pid 0, then make space to obtain relevant information about each subarray, and the final temp array for the domain 
+	IF (pid .EQ. 0) THEN
+		ALLOCATE( Tfinal(1:ny,1:nx) )
+		ALLOCATE( subarray_rows_array(1:Nprocs) )
+		ALLOCATE( subarray_cols_array(1:Nprocs) )
+		ALLOCATE( subarray_row_start(1:Nprocs) )
+		ALLOCATE( subarray_col_start(1:Nprocs) )
+	END IF
+	
+	
+	! ---- RECIEVE SUBARRAY TYPE ----
+
+	! Gather subarray information from all processors
+		! Subarray row sizes
+		CALL MPI_GATHER( subarray_Nrows, 1, MPI_INTEGER, subarray_rows_array, 1, MPI_INTEGER, 0, COMM_TOPO, ierr )
+		! Subarray column sizes
+		CALL MPI_GATHER( subarray_Ncols, 1, MPI_INTEGER, subarray_cols_array, 1, MPI_INTEGER, 0, COMM_TOPO, ierr )
+		! Start row location in the final matrix (minus 1 because start location starts at zero)
+		CALL MPI_GATHER( node_low_y-1, 	 1, MPI_INTEGER, subarray_row_start,  1, MPI_INTEGER, 0, COMM_TOPO, ierr )
+		! Start column location in the final matrix (minus 1 because start location starts at zero)
+		CALL MPI_GATHER( node_low_x-1, 	 1, MPI_INTEGER, subarray_col_start,  1, MPI_INTEGER, 0, COMM_TOPO, ierr )
+		
+
+	! SOLVING
 
     SELECT CASE (solvertype)
 
         ! jacobi solver
         CASE ("jac")
             ! Begin the solution loop
-            ! do while ((t<ttot).and.(r>rmax))
-            do while (time<t_final)
+            do while ((time<t_final).and.(rc>res_max))
+            ! do while (time<0.05)
 
+				!-------------------------------------------------------------------!
                 ! Calculation of solution using only jacobi solver
-                call jac(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
+                call jac(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
 
-
+				!-------------------------------------------------------------------!
 				! COMMUNICATION				
 				! ------- RECEIVE FROM THE RIGHT/EAST, SEND TO THE RIGHT/EAST
 				! Receive from the east1, and put it into the space for the ghost node on the east side
@@ -206,14 +296,15 @@ write(*,*) T
 				! Wait for data sends to complete before black points start referencing red points
 				CALL MPI_WAITALL(12, request_array, status_array, ierr)
 
-
+				!-------------------------------------------------------------------!
+				! RESIDUALS
                 ! computing residuals
                 call respar(aw,ae,an,as,ap,b,T,resil,resih,resjl,resjh,resmat)
 
-                ! Calculate Domain averaged residual for stopping critterion
-                rcurrent = SUM(SUM(ABS(resmat(resil:resih,resjl:resjh)),1),1) / ((nx-2)*(ny-2))
+				! Calculate Domain averaged residual for stopping critterion
+				rcurrent = SUM(SUM(ABS(resmat(resil:resih,resjl:resjh)),1),1) / ((resih-resil+1)*(resjh-resjl+1))
 
-                ! Combining all residuals on each processor and sending to processor 0
+                ! ! Combining all residuals on each processor and sending to processor 0
                 call MPI_REDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
 
                 if (pid == 0) then
@@ -222,26 +313,305 @@ write(*,*) T
 
                 call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
 
-                ! Printing to screen after a certain number of iterations
+
+				!-------------------------------------------------------------------!
+				! Printing to screen after a certain number of iterations
                 if (mod(iter,100).eq.0) then
-                    write(*,*) 'iter', 'res', 'time'
-                    write(*,*) iter, rc, time
 
-									! CLARAAAAA TECPLOT STUFF
+					! TECPLOT
 
-										! --------------------------------------------------------------------------------------- 
-										!     _____     ____
-										!    /      \  |  o | 
-										!   |        |/ ___\|                slab decomposition subroutine
-										!   |_________/     
-										!   |_|_| |_|_|
-										!	  
-										! ---------------------------------------------------------------------------------------
+					! --------------------------------------------------------------------------------------- 
+					!     _____     ____
+					!    /      \  |  o | 
+					!   |        |/ ___\|                TECPLOT
+					!   |_________/     
+					!   |_|_| |_|_|
+					!	  
+					! ---------------------------------------------------------------------------------------
+
+					! These subarrays are now sent to PID 0
+					CALL MPI_ISEND( T, 1, SENDINGSUBBARAY, 0, tag2, COMM_TOPO, request_array_gather(1), ierr)	
+							
+					! Pid 0 receiving data and putting into final file
+					IF (pid .EQ. 0) THEN
+
+						DO i = 0, Nprocs-1
+						
+							! Creating receive subarray type bespoke to each processor
+							CALL MPI_Type_create_subarray(2, [ny, nx], [subarray_rows_array(i+1), subarray_cols_array(i+1)], &
+							[subarray_row_start(i+1),subarray_col_start(i+1)], MPI_ORDER_FORTRAN, MPI_DOUBLE_PRECISION, RECVSUBBARAY, ierr)
+							
+							CALL MPI_TYPE_COMMIT(RECVSUBBARAY, ierr)
+						
+							! Receiving with this new receiving subarray type
+							CALL MPI_IRECV( Tfinal, 1, RECVSUBBARAY, &
+								i, tag2, COMM_TOPO, request_array(i+2), ierr)
+						END DO
+
+						CALL MPI_WAITALL(Nprocs+1, request_array, status_array, ierr)
+						
+						
+						! --- PUTTING INTO FILE ---
+						! x vector of whole domain (could have also done a mpi_gatherv)
+						xtot 	= 0. + dx * [(i, i=0,(nx-1))] ! Implied DO loop used
+						! y vector of whole domain (could have also done a mpi_gatherv)
+						ytot 	= 0. + dy * [(i, i=0,(ny-1))] ! Implied DO loop used
+
+						! Writing updated solution to file at each new iteration
+						write(file_name, "(A9,I5,A4)") "TecPlot2D",iter,".tec"
+						CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tfinal,  file_name )
+
+						! Writing updated initial distribution to file
+						write(file_name, "(A17)") "TecPlot2Dinit.tec"
+						CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tinit,  file_name )
+						
+					END IF
+
+					write(*,*) '-----------------------------------------'
+					write(*,*) 'Time =', time
+					write(*,*) 'Iteration =', iter
+					write(*,*) 'Residual =', rc
+					write(*,*) '-----------------------------------------'
+					
                 end if
 
-                ! updating old and new temperature values
-                Told = T
-                T = Tn
+				!-------------------------------------------------------------------!
+                ! updating counter
+                time = time + dt
+                iter = iter + 1
+
+            end do
+
+
+! 			 ;               ,           
+!          ,;                 '.         
+!         ;:                   :;        
+!        ::                     ::       
+!        ::                     ::       
+!        ':                     :        
+!         :.                    :        
+!      ;' ::                   ::  '     
+!     .'  ';                   ;'  '.    
+!    ::    :;                 ;:    ::   
+!    ;      :;.             ,;:     ::   
+!    :;      :;:           ,;"      ::   
+!    ::.      ':;  ..,.;  ;:'     ,.;:   
+!     "'"...   '::,::::: ;:   .;.;""'    
+!         '"""....;:::::;,;.;"""         
+!     .:::.....'"':::::::'",...;::::;.   
+!    ;:' '""'"";.,;:::::;.'""""""  ':;   
+!   ::'         ;::;:::;::..         :;  
+!  ::         ,;:::::::::::;:..       :: 
+!  ;'     ,;;:;::::::::::::::;";..    ':.
+! ::     ;:"  ::::::"""'::::::  ":     ::
+!  :.    ::   ::::::;  :::::::   :     ; 
+!   ;    ::   :::::::  :::::::   :    ;  
+!    '   ::   ::::::....:::::'  ,:   '   
+!     '  ::    :::::::::::::"   ::       
+!        ::     ':::::::::"'    ::       
+!        ':       """""""'      ::       
+!         ::                   ;:        
+!         ':;                 ;:"        
+!           ';              ,;'          
+!             "'           '"            
+!               '
+
+        CASE ("redblack")
+
+            ! Begin the solution loop
+            do while ((time<t_final).and.(rc>res_max))
+            ! do while (time<t_final)
+
+				!-------------------------------------------------------------------!
+                ! calculation of red nodes
+                call rednodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
+
+				!-------------------------------------------------------------------!
+                ! COMMUNICATION of red nodes			
+				! ------- RECEIVE FROM THE RIGHT/EAST, SEND TO THE RIGHT/EAST
+				! Receive from the east1, and put it into the space for the ghost node on the east side
+				CALL MPI_IRECV( T(ind_low_east1:ind_high_east1, ind_high_x), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
+								east1, tag, COMM_TOPO, request_array(1), ierr)
+				! Send to the east1
+				CALL MPI_ISEND( T(ind_low_east1:ind_high_east1, ind_high_x-1), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
+								east1, tag, COMM_TOPO, request_array(2), ierr)
+								
+				! Receive from the east2, and put it into the space for the ghost node on the east side
+				CALL MPI_IRECV( T(ind_low_east2:ind_high_east2, ind_high_x), ncalcpoints_y_east2, MPI_DOUBLE_PRECISION, &
+								east2, tag, COMM_TOPO, request_array(3), ierr)
+				! Send to the east2
+				CALL MPI_ISEND( T(ind_low_east2:ind_high_east2, ind_high_x-1), ncalcpoints_y_east2, MPI_DOUBLE_PRECISION, &
+								east2, tag, COMM_TOPO, request_array(4), ierr)
+
+
+				! ------- RECEIVE FROM THE LEFT/WEST, SEND TO THE LEFT/WEST
+				! Receive from the west1, put it into the space for the ghost node on the west side 
+				CALL MPI_IRECV( T(ind_low_west1:ind_high_west1, ind_low_x), ncalcpoints_y_west1, MPI_DOUBLE_PRECISION, & 
+								west1, tag, COMM_TOPO, request_array(5), ierr)
+				! Send to the west1
+				CALL MPI_ISEND( T(ind_low_west1:ind_high_west1, ind_low_x+1), ncalcpoints_y_west1, MPI_DOUBLE_PRECISION, &
+								west1, tag, COMM_TOPO, request_array(6), ierr)
+								
+				! Receive from the west2, put it into the space for the ghost node on the west side 
+				CALL MPI_IRECV( T(ind_low_west2:ind_high_west2, ind_low_x), ncalcpoints_y_west2, MPI_DOUBLE_PRECISION, & 
+								west2, tag, COMM_TOPO, request_array(7), ierr)
+				! Send to the west2
+				CALL MPI_ISEND( T(ind_low_west2:ind_high_west2, ind_low_x+1), ncalcpoints_y_west2, MPI_DOUBLE_PRECISION, &
+								west2, tag, COMM_TOPO, request_array(8), ierr)
+								
+				! ------- RECEIVE FROM THE NORTH, SEND TO THE NORTH
+				! Receive from the north, put it into the space for the ghost node 
+				CALL MPI_IRECV( T(ind_low_y, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								north, tag, COMM_TOPO, request_array(9), ierr)
+				! Send to the north
+				CALL MPI_ISEND( T(ind_low_y+1, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								north, tag, COMM_TOPO, request_array(10), ierr)
+				! ------- RECEIVE FROM THE SOUTH, SEND TO THE SOUTH
+				! Receive from the south, put it into the space for the ghost node 
+				CALL MPI_IRECV( T(ind_high_y, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								south, tag, COMM_TOPO, request_array(11), ierr)
+				! Send to the south
+				CALL MPI_ISEND( T(ind_high_y-1, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								south, tag, COMM_TOPO, request_array(12), ierr)
+
+				! Wait for data sends to complete before black points start referencing red points
+				CALL MPI_WAITALL(12, request_array, status_array, ierr)
+
+
+				!-------------------------------------------------------------------!
+                ! calculation of black nodes
+                call blacknodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
+
+
+				!-------------------------------------------------------------------!
+                ! COMMUNICATION of black nodes
+                ! ------- RECEIVE FROM THE RIGHT/EAST, SEND TO THE RIGHT/EAST
+				! Receive from the east1, and put it into the space for the ghost node on the east side
+				CALL MPI_IRECV( T(ind_low_east1:ind_high_east1, ind_high_x), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
+								east1, tag, COMM_TOPO, request_array(1), ierr)
+				! Send to the east1
+				CALL MPI_ISEND( T(ind_low_east1:ind_high_east1, ind_high_x-1), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
+								east1, tag, COMM_TOPO, request_array(2), ierr)
+								
+				! Receive from the east2, and put it into the space for the ghost node on the east side
+				CALL MPI_IRECV( T(ind_low_east2:ind_high_east2, ind_high_x), ncalcpoints_y_east2, MPI_DOUBLE_PRECISION, &
+								east2, tag, COMM_TOPO, request_array(3), ierr)
+				! Send to the east2
+				CALL MPI_ISEND( T(ind_low_east2:ind_high_east2, ind_high_x-1), ncalcpoints_y_east2, MPI_DOUBLE_PRECISION, &
+								east2, tag, COMM_TOPO, request_array(4), ierr)
+
+
+				! ------- RECEIVE FROM THE LEFT/WEST, SEND TO THE LEFT/WEST
+				! Receive from the west1, put it into the space for the ghost node on the west side 
+				CALL MPI_IRECV( T(ind_low_west1:ind_high_west1, ind_low_x), ncalcpoints_y_west1, MPI_DOUBLE_PRECISION, & 
+								west1, tag, COMM_TOPO, request_array(5), ierr)
+				! Send to the west1
+				CALL MPI_ISEND( T(ind_low_west1:ind_high_west1, ind_low_x+1), ncalcpoints_y_west1, MPI_DOUBLE_PRECISION, &
+								west1, tag, COMM_TOPO, request_array(6), ierr)
+								
+				! Receive from the west2, put it into the space for the ghost node on the west side 
+				CALL MPI_IRECV( T(ind_low_west2:ind_high_west2, ind_low_x), ncalcpoints_y_west2, MPI_DOUBLE_PRECISION, & 
+								west2, tag, COMM_TOPO, request_array(7), ierr)
+				! Send to the west2
+				CALL MPI_ISEND( T(ind_low_west2:ind_high_west2, ind_low_x+1), ncalcpoints_y_west2, MPI_DOUBLE_PRECISION, &
+								west2, tag, COMM_TOPO, request_array(8), ierr)
+								
+				! ------- RECEIVE FROM THE NORTH, SEND TO THE NORTH
+				! Receive from the north, put it into the space for the ghost node 
+				CALL MPI_IRECV( T(ind_low_y, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								north, tag, COMM_TOPO, request_array(9), ierr)
+				! Send to the north
+				CALL MPI_ISEND( T(ind_low_y+1, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								north, tag, COMM_TOPO, request_array(10), ierr)
+				! ------- RECEIVE FROM THE SOUTH, SEND TO THE SOUTH
+				! Receive from the south, put it into the space for the ghost node 
+				CALL MPI_IRECV( T(ind_high_y, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								south, tag, COMM_TOPO, request_array(11), ierr)
+				! Send to the south
+				CALL MPI_ISEND( T(ind_high_y-1, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								south, tag, COMM_TOPO, request_array(12), ierr)
+
+				! Wait for data sends to complete before black points start referencing red points
+				CALL MPI_WAITALL(12, request_array, status_array, ierr)
+
+				!-------------------------------------------------------------------!
+				! RESIDUALS
+                ! computing residuals
+                call respar(aw,ae,an,as,ap,b,T,resil,resih,resjl,resjh,resmat)
+
+				! Calculate Domain averaged residual for stopping critterion
+				rcurrent = SUM(SUM(ABS(resmat(resil:resih,resjl:resjh)),1),1) / ((resih-resil+1)*(resjh-resjl+1))
+
+                ! ! Combining all residuals on each processor and sending to processor 0
+                call MPI_REDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
+
+                if (pid == 0) then
+                    rc = rc/nprocs
+                end if
+
+                call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
+
+
+				!-------------------------------------------------------------------!
+                ! Printing to screen after a certain number of iterations
+                if (mod(iter,100).eq.0) then
+					! TECPLOT
+
+					! --------------------------------------------------------------------------------------- 
+					!     _____     ____
+					!    /      \  |  o | 
+					!   |        |/ ___\|                TECPLOT
+					!   |_________/     
+					!   |_|_| |_|_|
+					!	  
+					! ---------------------------------------------------------------------------------------
+
+					! These subarrays are now sent to PID 0
+					CALL MPI_ISEND( T, 1, SENDINGSUBBARAY, 0, tag2, COMM_TOPO, request_array_gather(1), ierr)	
+							
+					! Pid 0 receiving data and putting into final file
+					IF (pid .EQ. 0) THEN
+
+						DO i = 0, Nprocs-1
+						
+							! Creating receive subarray type bespoke to each processor
+							CALL MPI_Type_create_subarray(2, [ny, nx], [subarray_rows_array(i+1), subarray_cols_array(i+1)], &
+							[subarray_row_start(i+1),subarray_col_start(i+1)], MPI_ORDER_FORTRAN, MPI_DOUBLE_PRECISION, RECVSUBBARAY, ierr)
+							
+							CALL MPI_TYPE_COMMIT(RECVSUBBARAY, ierr)
+						
+							! Receiving with this new receiving subarray type
+							CALL MPI_IRECV( Tfinal, 1, RECVSUBBARAY, &
+								i, tag2, COMM_TOPO, request_array(i+2), ierr)
+						END DO
+
+						CALL MPI_WAITALL(Nprocs+1, request_array, status_array, ierr)
+						
+						
+						! --- PUTTING INTO FILE ---
+						! x vector of whole domain (could have also done a mpi_gatherv)
+						xtot 	= 0. + dx * [(i, i=0,(nx-1))] ! Implied DO loop used
+						! y vector of whole domain (could have also done a mpi_gatherv)
+						ytot 	= 0. + dy * [(i, i=0,(ny-1))] ! Implied DO loop used
+
+						! Writing updated solution to file at each new iteration
+						write(file_name, "(A9,I5,A4)") "TecPlot2D",iter,".tec"
+						CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tfinal,  file_name )
+
+						! Writing updated initial distribution to file
+						write(file_name, "(A17)") "TecPlot2Dinit.tec"
+						CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tinit,  file_name )
+						
+					END IF
+
+					write(*,*) '-----------------------------------------'
+					write(*,*) 'Time =', time
+					write(*,*) 'Iteration =', iter
+					write(*,*) 'Residual =', rc
+					write(*,*) '-----------------------------------------'
+					
+                end if
+
 
                 ! updating counter
                 time = time + dt
@@ -249,69 +619,20 @@ write(*,*) T
 
             end do
 
-        
-        CASE ("redblack")
-
-            ! Begin the solution loop
-            ! do while ((t<ttot).and.(r>rmax))
-            ! do while (time<t_final)
-
-            !     ! calculation of red nodes
-            !     call rednodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
-
-            !     ! COMMUNICATION of red nodes
-
-            !     ! calculation of black nodes
-            !     call blacknodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
-
-            !     ! COMMUNICATION of black nodes
-                    
-
-            !     ! computing residuals
-            !     call respar(aw,ae,an,as,ap,b,T,resil,resih,resjl,resjh,resmat)
-
-            !     ! Calculate Domain averaged residual for stopping critterion
-            !     rcurrent = SUM(SUM(ABS(resmat(resil:resih,resjl:resjh)),1),1) / ((nx-2)*(ny-2))
-
-            !     ! Combining all residuals on each processor and sending to processor 0
-            !     call MPI_REDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
-
-            !     if (pid == 0) then
-            !         rc = rc/nprocs
-            !     end if
-
-            !     call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
-
-
-            !     ! Printing to screen after a certain number of iterations
-            !     if (mod(iter,100).eq.0) then
-            !         write(*,*) '      iter', '      res'
-            !         write(*,*) iter, rc
-            !     end if
-
-            !     ! updating old and new temperature values
-            !     Told = T
-            !     T = Tn
-
-            !     ! updating counter
-            !     time = time + dt
-            !     iter = iter + 1
-
-            ! end do
-
         CASE("Conj")
 
             ! ! Calculation of solution using Conjugate Gradient Method
             ! ! call CGSolve(an,as,ae,aw,ap,b,T)
 
     	CASE DEFAULT 
-		WRITE(*,*) "No topology selected or incorrect selection"
+		WRITE(*,*) "No solver selected or incorrect selection"
 		STOP
 
     END SELECT
 
-    ! write(*,*) 'Output after solver'
+    write(*,*) 'Output after solver'
     ! write(*,1600) T
+	write(*,*) iter, time, rc
 	
 	
 	
@@ -339,83 +660,14 @@ write(*,*) T
 	
 	! ---- SEND DATA TYPE CREATION ----
 	! The final send/recvs will be dependent on number of processors unlike before. Re-allocate relevant arrays to reflect this
-	DEALLOCATE( status_array  )
-	DEALLOCATE( request_array )
-	ALLOCATE( status_array(MPI_STATUS_SIZE, Nprocs+1) )
-	ALLOCATE( request_array(Nprocs+1) )
-	
-	! All processors first create subarrays. These are the final temperature array cleansed of the extra ghost nodes
-	subarray_Nrows = node_high_y-node_low_y + 1
-	subarray_Ncols = node_high_x-node_low_x + 1
-	
-	CALL MPI_Type_create_subarray(2, [ncalcpoints_y+2,ncalcpoints_x+2], [subarray_Nrows,subarray_Ncols], &
-	[node_low_y-ind_low_y, node_low_x-ind_low_x], MPI_ORDER_FORTRAN, MPI_DOUBLE_PRECISION, SENDINGSUBBARAY, ierr)
-	CALL MPI_TYPE_COMMIT(SENDINGSUBBARAY, ierr)
-	
-	! These subarrays are now sent to PID 0
-	CALL MPI_ISEND( T, 1, SENDINGSUBBARAY, 0, tag2, COMM_TOPO, request_array(1), ierr)
-		
-	! If pid 0, then make space to obtain relevant information about each subarray, and the final temp array for the domain 
-	IF (pid .EQ. 0) THEN
-		ALLOCATE( Tfinal(1:ny,1:nx) )
-		ALLOCATE( subarray_rows_array(1:Nprocs) )
-		ALLOCATE( subarray_cols_array(1:Nprocs) )
-		ALLOCATE( subarray_row_start(1:Nprocs) )
-		ALLOCATE( subarray_col_start(1:Nprocs) )
-	END IF
-	
-	
-	! ---- RECIEVE SUBARRAY TYPE ----
-
-	! Gather subarray information from all processors
-		! Subarray row sizes
-		CALL MPI_GATHER( subarray_Nrows, 1, MPI_INTEGER, subarray_rows_array, 1, MPI_INTEGER, 0, COMM_TOPO, ierr )
-		! Subarray column sizes
-		CALL MPI_GATHER( subarray_Ncols, 1, MPI_INTEGER, subarray_cols_array, 1, MPI_INTEGER, 0, COMM_TOPO, ierr )
-		! Start row location in the final matrix (minus 1 because start location starts at zero)
-		CALL MPI_GATHER( node_low_y-1, 	 1, MPI_INTEGER, subarray_row_start,  1, MPI_INTEGER, 0, COMM_TOPO, ierr )
-		! Start column location in the final matrix (minus 1 because start location starts at zero)
-		CALL MPI_GATHER( node_low_x-1, 	 1, MPI_INTEGER, subarray_col_start,  1, MPI_INTEGER, 0, COMM_TOPO, ierr )
-		
-			
-	! Pid 0 receiving data and putting into final file
-	IF (pid .EQ. 0) THEN
-
-		DO i = 0, Nprocs-1
-		
-			! Creating receive subarray type bespoke to each processor
-			CALL MPI_Type_create_subarray(2, [ny, nx], [subarray_rows_array(i+1), subarray_cols_array(i+1)], &
-			[subarray_row_start(i+1),subarray_col_start(i+1)], MPI_ORDER_FORTRAN, MPI_DOUBLE_PRECISION, RECVSUBBARAY, ierr)
-			
-			CALL MPI_TYPE_COMMIT(RECVSUBBARAY, ierr)
-		
-			! Receiving with this new receiving subarray type
-			CALL MPI_IRECV( Tfinal, 1, RECVSUBBARAY, &
-				i, tag2, COMM_TOPO, request_array(i+2), ierr)
-		END DO
-
-		CALL MPI_WAITALL(Nprocs+1, request_array, status_array, ierr)
-		
-		
-		! --- PUTTING INTO FILE ---
-		! x vector of whole domain (could have also done a mpi_gatherv)
-		xtot 	= 0. + dx * [(i, i=0,(nx-1))] ! Implied DO loop used
-		! y vector of whole domain (could have also done a mpi_gatherv)
-		ytot 	= 0. + dy * [(i, i=0,(ny-1))] ! Implied DO loop used
-
-		CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tfinal )
-		
-	END IF
-	
 
 CALL MPI_FINALIZE(ierr)
 
     ! NOTE: Need to update this to match the number of spatial divisions (nx)
     1100 FORMAT(8(F20.10,1x))
-    1600 FORMAT(5(F14.8,1x))
+    1600 FORMAT(7(F14.8,1x))
     1400 FORMAT(8(F14.8,1x))
     1200 FORMAT(I2.1,I2.1,6(F8.4,1x))
     1300 FORMAT(I2.1,6(F10.8,1x))
-
 
 END PROGRAM MAIN

@@ -13,7 +13,7 @@ MODULE variablemodule
 	INTEGER :: nx, ny, iunit, Ntsteps
 	
 	! Problem variables / arrays
-	CHARACTER(LEN=5) :: topology, solvertype
+	CHARACTER(LEN=10) :: topology, solvertype
 	REAL (KIND = 8), ALLOCATABLE :: x(:), y(:)
 	
 	! Partitioning and node/indices
@@ -36,7 +36,7 @@ MODULE variablemodule
 	! MPI Send/Recv and Neighbour Information
 	INTEGER :: north, south, east1, east2, west1, west2, znorth, zsouth, zeast1, zeast2, zwest1, zwest2
 	INTEGER :: ierr, pid, Nprocs, i, j, tag
-	INTEGER, ALLOCATABLE :: status_array(:,:), request_array(:)
+	INTEGER, ALLOCATABLE :: status_array(:,:), request_array(:), status_array_gather(:,:), request_array_gather(:)
 	REAL (KIND = 8) :: NS_ROW_SENDRECV 
 	INTEGER :: ind_low_east1, ind_low_east2, ind_low_west1, ind_low_west2
 	INTEGER :: ind_high_east1, ind_high_east2, ind_high_west1, ind_high_west2, ignore_val
@@ -46,15 +46,19 @@ MODULE variablemodule
     Real(kind = 8), allocatable :: T(:,:)
     Real(kind = 8), allocatable :: an(:,:), as(:,:), ae(:,:), aw(:,:), ap(:,:), b(:,:)
     Integer(kind = 8) :: il, ih, jl, jh, npp, iter, resil, resih, resjl, resjh
+	Real(kind = 8) :: CFL
 
     ! Solution solver variables
     Real(kind = 8) :: rcurrent, rc, time
     Real(kind = 8), allocatable :: Told(:,:), Tn(:,:), resmat(:,:)
 
     ! Gathering variables for final solution
-    Real(kind = 8), allocatable :: Ttemp(:,:), Ttot(:,:)
+    Real(kind = 8), allocatable :: Ttemp(:,:), Ttot(:,:), Tinit(:,:)
     Real(kind = 8) :: numcount
-	
+
+	! Plotting
+	Character(len=1024) ::  file_name
+
 	! -------------------------------------------------------------------------------------------------------------------------------
 	! `&&&` is used as a tag in comments to come back to something later. At end of assignment we can ctrlF for &&& and fix those things
 	! &&& Variables not in code yet but maybe needed later, stashing them here for now:
@@ -85,17 +89,18 @@ MODULE variablemodule
 		Lx		= 1. 				! x-domain length
 		Ly		= 1.				! y-domain length
 		alpha 	= 0.128E-6			! Pizza Crust Thermal Diffusivity [m^2/s] (from https://www.tandfonline.com/doi/pdf/10.1081/JFP-120015599)
-	
+		! alpha = 1
+		
 		!! - File I/O
 		iunit 	= 11 				! I/O unit number
 	
 		!! - Modelling-specific Parameters
-		nx 		= 15				! Number of points in domain in x direction (evenly spaced)
-		ny 		= 15				! Number of points in domain in y direction (evenly spaced)
+		nx 		= 512					! Number of points in domain in x direction (evenly spaced)
+		ny 		= 512					! Number of points in domain in y direction (evenly spaced)
 		dx 		= Lx/(nx-1)			! Spatial step based on desired number of points [m]
 		dy 		= Ly/(ny-1)			! Spatial step based on desired number of points [m]
 		Ntsteps = 1000				! Number of time steps
-		t_final = 10.				! [s] &&& just a guess for now
+		t_final = 900.				! [s] &&& just a guess for now
 		dt		= t_final/Ntsteps 	! Time step size [s]
 		
 		!! - Send/Recv -
@@ -103,7 +108,7 @@ MODULE variablemodule
 		tag2	= 5
 		
 		!! - Iteration Loops -
-		res_max = 0.001				! Maximum residual value
+		res_max = 1e-7				! Maximum residual value
 		iter_max= 200000 			! Maximum number of iterations allowed
 		k 		= 1					! Starting loop counter
 	

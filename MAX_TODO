@@ -20,6 +20,10 @@ check i = il,ih and j = jl,jh arent going outside of matrix bounds
 dot product in conjugate gradient
 
 
+check over looping indices for residual
+use new boundary condition
+
+
 Conjugate gradient method
 TO DO:
     Update preconditioning solver
@@ -31,7 +35,21 @@ QUESTIONS
 
 
 
-
+        if (time == 0) then
+            do j = jl+1,jh-1
+                do i = il+1,ih-1
+                    Tn(i,j) = (T(i+1,j)*an(i,j) + T(i-1,j)*as(i,j) + T(i,j+1)*ae(i,j) &
+                        + T(i,j-1)*aw(i,j) + T(i,j)*ap(i,j))/2
+                end do
+            end do
+        else
+            do j = jl+1,jh-1
+                do i = il+1,ih-1
+                    Tn(i,j) = T(i+1,j)*an(i,j) + T(i-1,j)*as(i,j) + T(i,j+1)*ae(i,j) &
+                        + T(i,j-1)*aw(i,j) + T(i,j)*ap(i,j) - Told(i,j)
+                end do
+            end do
+        end if
 
 
 

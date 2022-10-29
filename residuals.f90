@@ -26,15 +26,12 @@ module residuals
         
         INTEGER(kind = 8) :: i,j
         
-        ! Initialising residual
-        res(:,:) = 0.0
-        
         do j = 2,(ny-1)
         ! do j = jl,jh
             do i = 2,(nx-1)
             ! do i = il,ih           
-                res(i,j) = b(i,j) - ( aw(i,j)*x(i-1,j) + ae(i,j)*x(i+1,j) + an(i,j)*x(i,j+1) &
-                                                    + as(i,j)*x(i,j-1) + ap(i,j)*x(i,j) )		           
+                res(i,j) = b(i,j) - ( as(i,j)*x(i-1,j) + an(i,j)*x(i+1,j) + ae(i,j)*x(i,j+1) &
+                                                    + aw(i,j)*x(i,j-1) + ap(i,j)*x(i,j) )		           
             end do
         end do		
 
@@ -49,13 +46,10 @@ module residuals
         real(kind=8), dimension(il:ih,jl:jh), INTENT(IN) :: aw,ae,an,as,ap,b,T
         real(kind=8), dimension(il:ih,jl:jh), INTENT(OUT) :: res
         
-        ! Initialising residual
-        res(:,:) = 0.0
-        
-        do j = jl,jh
-            do i = il,ih           
-                res(i,j) = b(i,j) - ( aw(i,j)*T(i-1,j) + ae(i,j)*T(i+1,j) + an(i,j)*T(i,j+1) &
-                                                    + as(i,j)*T(i,j-1) + ap(i,j)*T(i,j) )		           
+        do j = jl+1,jh-1
+            do i = il+1,ih-1           
+                res(i,j) = b(i,j) - ( as(i,j)*T(i-1,j) + an(i,j)*T(i+1,j) + ae(i,j)*T(i,j+1) &
+                                                    + aw(i,j)*T(i,j-1) + ap(i,j)*T(i,j) )		           
             end do
         end do	
 
