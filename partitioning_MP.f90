@@ -88,12 +88,12 @@ MODULE partitionmodule
 					
 				!   (zwest2 = MPI_PROC_NULL)
 				
-				IF (Nprocs .GT. 1) THEN
+				IF ((Nprocs .GT. 1) .AND. (k .NE. s+r)) THEN
 					zeast1 = alloc_pid + n
 					cumulative_neighbours = cumulative_neighbours+1
 					edges(cumulative_neighbours) = zeast1
 				END IF
-				IF ((Nprocs .GT. 1) .AND. (k .EQ. r)) THEN
+				IF ((Nprocs .GT. 1) .AND. (k .EQ. r) .AND. (s .NE. 0)) THEN
 					zeast2 = alloc_pid + n + 1
 					cumulative_neighbours = cumulative_neighbours+1
 					edges(cumulative_neighbours) = zeast2
@@ -114,6 +114,10 @@ MODULE partitionmodule
 				
 				! Adding to indexes array needed to define the graph topology communicator later
 				indexes(alloc_pid+1) = cumulative_neighbours
+				
+				! IF (pid .EQ. alloc_pid) THEN
+					! WRITE(*,*) "i am pid", pid, north, south, east1, east2, west1, west2
+				! end if
 				
 			END DO
 		END DO
@@ -304,6 +308,11 @@ MODULE partitionmodule
 		END IF
 		ind_high_west2 = ind_high_y-1
 		ncalcpoints_y_west2 = ind_high_west2 - ind_low_west2 + 1 ! For send/recv `count`
+		
+		! ! -------------------------------------------------------
+		! IF (pid .EQ. alloc_pid) THEN
+			! WRITE(*,*) "i am pid", pid, north, south, east1, east2, west1, west2
+		! end if
 		
 	
 	END SUBROUTINE graph_partition
