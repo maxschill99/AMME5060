@@ -16,18 +16,18 @@ program test
 
     ! Initialising variables
 
-    ! ! ! Variables newly defined in this program
-    ! Real(kind = 8), allocatable :: T(:,:)
-    ! Real(kind = 8), allocatable :: an(:,:), as(:,:), ae(:,:), aw(:,:), ap(:,:), b(:,:)
-    ! Integer(kind = 8) :: il, ih, jl, jh, npp, iter
+    ! ! Variables newly defined in this program
+    Real(kind = 8), allocatable :: T(:,:)
+    Real(kind = 8), allocatable :: an(:,:), as(:,:), ae(:,:), aw(:,:), ap(:,:), b(:,:)
+    Integer(kind = 8) :: il, ih, jl, jh, npp, iter
 
-    ! ! Solution solver variables
-    ! Real(kind = 8) :: rcurrent, rc, time
-    ! Real(kind = 8), allocatable :: Told(:,:), Tn(:,:), resmat(:,:)
+    ! Solution solver variables
+    Real(kind = 8) :: rcurrent, rc, time
+    Real(kind = 8), allocatable :: Told(:,:), Tn(:,:), resmat(:,:)
 
-    ! ! Gathering variables for final solution
-    ! Real(kind = 8), allocatable :: Ttemp(:,:), Ttot(:,:)
-    ! Real(kind = 8) :: numcount
+    ! Gathering variables for final solution
+    Real(kind = 8), allocatable :: Ttemp(:,:), Ttot(:,:)
+    Real(kind = 8) :: numcount
 
     il = 0; ih = 0; jl = 0; jh = 0
 

@@ -139,6 +139,10 @@ PROGRAM MAIN
 
 ! ! !-----------------------------------------------------------------------------------------------------!
 ! ! !-----------------------------------------------------------------------------------------------------!
+! Indices for computation
+il = ind_low_x; ih = ind_high_x; jl = ind_low_y; jh = ind_high_y
+resil = node_low_x; resih = node_high_x; resjl = node_low_y; resjh = node_high_y
+
 ! INITIALISE TEMP DISTRIBUTION 
 	! boundary conditions most pizza like
 ! Allocation of variable sizes
@@ -146,21 +150,20 @@ call allocatevars(an,as,ae,aw,ap,b,T,Told,Tn,resmat,il,ih,jl,jh)
 
 ! Initialising boundary conditions on temp array
 call solutioninit(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
+write(*,*) T
 
 ! ! !-----------------------------------------------------------------------------------------------------!
 ! ! !-----------------------------------------------------------------------------------------------------!
 ! Computation
-il = ind_low_x; ih = ind_high_x; jl = ind_low_y; jh = ind_high_y
-resil = node_low_x; resih = node_high_x; resjl = node_low_y; resjh = node_high_y
-! SOLVER
+! SOLVER OUTLINE
 	! outer loop: time stepping
 		! solve for time step n+1 and while r<err
 			! conjugate gradient/jacobi/redback
 
-
 			! this will involve looping through temperature arrays
-		
-		! end solve for timestep n+1
+			! end solve for timestep n+1
+
+			! update resduals
 		
 		! If statement check that t=somevalue
 		! WRITE TO ONE FILE 
@@ -169,7 +172,7 @@ resil = node_low_x; resih = node_high_x; resjl = node_low_y; resjh = node_high_y
 	
 	! Residual module
 	! Solver module - jacobi/gauss seidel
-	! Multigrid module
+	! CG module
 	! Call communication
 
 	! Solution loop variable initialisation
@@ -197,7 +200,9 @@ resil = node_low_x; resih = node_high_x; resjl = node_low_y; resjh = node_high_y
 
                 ! Calculation of solution using only jacobi solver
                 call jac(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
-				
+
+
+				! COMMUNICATION				
 				! ------- RECEIVE FROM THE RIGHT/EAST, SEND TO THE RIGHT/EAST
 				! Receive from the east1, and put it into the space for the ghost node on the east side
 				CALL MPI_IRECV( T(ind_low_east1:ind_high_east1, ind_high_x), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
@@ -247,31 +252,26 @@ resil = node_low_x; resih = node_high_x; resjl = node_low_y; resjh = node_high_y
 				! Wait for data sends to complete before black points start referencing red points
 				CALL MPI_WAITALL(12, request_array, status_array, ierr)
 
-							
 
                 ! computing residuals
-                ! call respar(aw,ae,an,as,ap,b,T,resil,resih,resjl,resjh,resmat)
+                call respar(aw,ae,an,as,ap,b,T,resil,resih,resjl,resjh,resmat)
 
-				! 	write(*,*) 'hi'
+                ! Calculate Domain averaged residual for stopping critterion
+                rcurrent = SUM(SUM(ABS(resmat(resil:resih,resjl:resjh)),1),1) / ((nx-2)*(ny-2))
 
-                ! ! Calculate Domain averaged residual for stopping critterion
-                ! rcurrent = SUM(SUM(ABS(resmat(resil:resih,resjl:resjh)),1),1) / ((nx-2)*(ny-2))
+                ! Combining all residuals on each processor and sending to processor 0
+                call MPI_REDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
 
-                ! ! Combining all residuals on each processor and sending to processor 0
-                ! call MPI_REDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
+                if (pid == 0) then
+                    rc = rc/nprocs
+                end if
 
-                ! if (pid == 0) then
-                !     rc = rc/nprocs
-                ! end if
+                call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
 
-                ! call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
-
-
- 
                 ! Printing to screen after a certain number of iterations
                 if (mod(iter,100).eq.0) then
-                    write(*,*) '      iter', '      res'
-                    write(*,*) iter, rc
+                    write(*,*) 'iter', 'res', 'time'
+                    write(*,*) iter, rc, time
 
 									! CLARAAAAA TECPLOT STUFF
 
@@ -300,50 +300,50 @@ resil = node_low_x; resih = node_high_x; resjl = node_low_y; resjh = node_high_y
 
             ! Begin the solution loop
             ! do while ((t<ttot).and.(r>rmax))
-            do while (time<t_final)
+            ! do while (time<t_final)
 
-                ! calculation of red nodes
-                call rednodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
+            !     ! calculation of red nodes
+            !     call rednodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
 
-                ! COMMUNICATION of red nodes
+            !     ! COMMUNICATION of red nodes
 
-                ! calculation of black nodes
-                call blacknodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
+            !     ! calculation of black nodes
+            !     call blacknodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh,time)
 
-                ! COMMUNICATION of black nodes
+            !     ! COMMUNICATION of black nodes
                     
 
-                ! computing residuals
-                call respar(aw,ae,an,as,ap,b,T,resil,resih,resjl,resjh,resmat)
+            !     ! computing residuals
+            !     call respar(aw,ae,an,as,ap,b,T,resil,resih,resjl,resjh,resmat)
 
-                ! Calculate Domain averaged residual for stopping critterion
-                rcurrent = SUM(SUM(ABS(resmat(resil:resih,resjl:resjh)),1),1) / ((nx-2)*(ny-2))
+            !     ! Calculate Domain averaged residual for stopping critterion
+            !     rcurrent = SUM(SUM(ABS(resmat(resil:resih,resjl:resjh)),1),1) / ((nx-2)*(ny-2))
 
-                ! Combining all residuals on each processor and sending to processor 0
-                call MPI_REDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
+            !     ! Combining all residuals on each processor and sending to processor 0
+            !     call MPI_REDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
 
-                if (pid == 0) then
-                    rc = rc/nprocs
-                end if
+            !     if (pid == 0) then
+            !         rc = rc/nprocs
+            !     end if
 
-                call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
+            !     call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
 
 
-                ! Printing to screen after a certain number of iterations
-                if (mod(iter,100).eq.0) then
-                    write(*,*) '      iter', '      res'
-                    write(*,*) iter, rc
-                end if
+            !     ! Printing to screen after a certain number of iterations
+            !     if (mod(iter,100).eq.0) then
+            !         write(*,*) '      iter', '      res'
+            !         write(*,*) iter, rc
+            !     end if
 
-                ! updating old and new temperature values
-                Told = T
-                T = Tn
+            !     ! updating old and new temperature values
+            !     Told = T
+            !     T = Tn
 
-                ! updating counter
-                time = time + dt
-                iter = iter + 1
+            !     ! updating counter
+            !     time = time + dt
+            !     iter = iter + 1
 
-            end do
+            ! end do
 
         CASE("Conj")
 
@@ -456,10 +456,15 @@ resil = node_low_x; resih = node_high_x; resjl = node_low_y; resjh = node_high_y
 		
 	END IF
 	
-	
 
 CALL MPI_FINALIZE(ierr)
 
+    ! NOTE: Need to update this to match the number of spatial divisions (nx)
+    1100 FORMAT(8(F20.10,1x))
+    1600 FORMAT(5(F14.8,1x))
+    1400 FORMAT(8(F14.8,1x))
+    1200 FORMAT(I2.1,I2.1,6(F8.4,1x))
+    1300 FORMAT(I2.1,6(F10.8,1x))
 
 
 END PROGRAM MAIN
