@@ -20,7 +20,7 @@ MODULE variablemodule
 	INTEGER :: p, n, r, s, k , m , d, e, alloc_pid, cumulative_neighbours, zone, zone_col, zone_row
 	INTEGER :: node_low_x, node_low_y, node_high_x, node_high_y, gift_to_zone_A, gift_to_zone_B, rem, rem_2, nx_zA, nx_zB
 	INTEGER :: ind_low_x, ind_high_x, ind_low_y, ind_high_y
-		! Specifically for cartesian:
+		! Specifically for cartesian/slabs:
 	INTEGER :: bestdiv, bestgap, divisor, ndims, COMM_CART
 	INTEGER, ALLOCATABLE :: dims(:), coords(:)
 	LOGICAL, ALLOCATABLE :: periods(:)
@@ -90,8 +90,8 @@ MODULE variablemodule
 		iunit 	= 11 				! I/O unit number
 	
 		!! - Modelling-specific Parameters
-		nx 		= 2**2+1			! Number of points in domain in x direction (evenly spaced)
-		ny 		= 2**2+1			! Number of points in domain in y direction (evenly spaced)
+		nx 		= 15				! Number of points in domain in x direction (evenly spaced)
+		ny 		= 15				! Number of points in domain in y direction (evenly spaced)
 		dx 		= Lx/(nx-1)			! Spatial step based on desired number of points [m]
 		dy 		= Ly/(ny-1)			! Spatial step based on desired number of points [m]
 		Ntsteps = 1000				! Number of time steps
