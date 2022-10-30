@@ -28,6 +28,7 @@ program test
     ! ! Gathering variables for final solution
     ! Real(kind = 8), allocatable :: Ttemp(:,:), Ttot(:,:)
     ! Real(kind = 8) :: numcount
+    Integer :: req1, req2
 
     il = 0; ih = 0; jl = 0; jh = 0
 
@@ -59,12 +60,38 @@ program test
             il = 1
             ih = ny
             jl = 1
-            jh = nx/2
+            jh = nx/2 + 1
+            ! il = 1
+            ! ih = 500
+            ! jl = 1
+            ! jh = 251
+
+            resil = 1
+            resih = ny
+            resjl = 1
+            resjh = nx/2
+            ! resil = 1
+            ! resih = 500
+            ! resjl = 1
+            ! resjh = 250
         else
             il = 1
             ih = ny
-            jl = nx/2 + 1
+            jl = nx/2
             jh = nx
+            ! il = 1
+            ! ih = 500
+            ! jl = 250
+            ! jh = 500
+
+            resil = 1
+            resih = ny
+            resjl = nx/2+1
+            resjh = nx
+            ! resil = 1
+            ! resih = 500
+            ! resjl = 251
+            ! resjh = 500
         end if
     end if
     ! write(*,*) pid, il,ih, jl,jh
@@ -79,6 +106,7 @@ program test
     call solutioninit(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
     ! write(*,1600) T
    
+    rc = 1
 
     ! !-----------------------------------------------------------------------------------------------------!
     ! !-----------------------------------------------------------------------------------------------------!
@@ -101,23 +129,40 @@ program test
         ! jacobi solver
         CASE ("jac")
             ! Begin the solution loop
-            ! do while ((time<t_final).and.(rc>res_max))
-            do while (time<50)
+            do while ((time<t_final).and.(rc>res_max))
+            ! do while (time<50)
 
                 ! Calculation of solution using only jacobi solver
                 call jac(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
 
                 ! COMMUNICATION - COPY FROM CLARA's PARTITIONING CODE TEST (need to update correct indices in comms)
-                write(*,*) 'new loop'
+                ! write(*,*) 'new loop'
                 ! write(*,1600) T
-                write(*,*) time, iter
+                ! write(*,*) time, iter
+
+                ! Non-blocking processor communication
+                if (pid.NE.nprocs-1) then ! not on far right
+                    call MPI_IRECV(T(:,ih+1),ny,MPI_DOUBLE_PRECISION,pid+1,tag,MPI_COMM_WORLD,req1,ierr) ! receive from the right
+                end if
+                if (pid.NE.0) then ! not on far left
+                    call MPI_ISEND(T(:,il),ny,MPI_DOUBLE_PRECISION,pid-1,tag,MPI_COMM_WORLD,req2,ierr) ! send to the left
+                end if
+                if (pid.NE.0) then ! not on far left
+                    call MPI_IRECV(T(:,il-1),ny,MPI_DOUBLE_PRECISION,pid-1,tag,MPI_COMM_WORLD,req1,ierr) ! receive from the left
+                end if
+                if (pid.NE.nprocs-1) then ! not on far right
+                    call MPI_ISEND(T(:,ih),ny,MPI_DOUBLE_PRECISION,pid+1,tag,MPI_COMM_WORLD,req2,ierr)	! send to the right
+                end if
+
+                ! Wait until all processors have finished communicating
+                call MPI_BARRIER(MPI_COMM_WORLD,ierr)
                     
 
                 ! computing residuals
-                call respar(aw,ae,an,as,ap,b,T,il,ih,jl,jh,resmat)
+                call respar(aw,ae,an,as,ap,b,T,resil,resih,resjl,resjh,resmat)
 
                 ! Calculate Domain averaged residual for stopping critterion
-                rcurrent = SUM(SUM(ABS(resmat(il:ih,jl:jh)),1),1) / ((ih-il+1)*(jh-jl+1))
+                rcurrent = SUM(SUM(ABS(resmat(resil:resih,resjl:resjh)),1),1) / ((resih-resil+1)*(resjh-resjl+1))
 
                 ! Combining all residuals on each processor and sending to processor 0
                 call MPI_REDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
@@ -128,14 +173,18 @@ program test
 
                 call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
 
-                write(*,*) rc
+                ! write(*,*) rc
 
 
-                ! ! Printing to screen after a certain number of iterations
-                ! if (mod(iter,100).eq.0) then
-                !     write(*,*) '      iter', '      res'
-                !     write(*,*) iter, rc
-                ! end if
+                ! Printing to screen after a certain number of iterations
+                if (mod(iter,100).eq.0) then
+					write(*,*) '-----------------------------------------'
+					write(*,*) 'Time =', time
+					write(*,*) 'Iteration =', iter
+					write(*,*) 'Residual =', rc
+					write(*,*) '-----------------------------------------'
+                    write(*,1600) T
+                end if
 
 
                 ! updating counter
@@ -207,7 +256,9 @@ program test
 
     write(*,*) 'Output after solver'
     ! write(*,1600) T
-    ! write(*,*) iter
+	write(*,*) iter, time, rc
+	write(*,*) pid,il,ih,jl,jh
+	write(*,*) pid, resil,resih,resjl,resjh
 
     ! write(*,*) 'residual matrix'
     ! write(*,1600) resmat
@@ -216,18 +267,21 @@ program test
     ! ! !-----------------------------------------------------------------------------------------------------!
     ! !! Getting final total temp array - SHOULD ALSO BE COVERED BY CLARA
     
-    ! ! Gathering all temperature areas to processor 0
-    ! allocate(Ttemp(il:ih,jl:jh))
-    ! ! allocate(Ttot(nx,ny))
+    ! Gathering all temperature areas to processor 0
+    allocate(Ttemp(il:ih,jl:jh))
+    if (pid==0) then
+        allocate(Ttot(nx,ny))
+        Ttot(:,:) = 0
+    end if
     ! allocate(Ttot(1,4))
 
-    ! ! write(*,*) size(Ttemp), (ih-il+1)*(jh-jl+1), size(Ttot)
-    ! Ttemp = T
-    ! Ttot(:,:) = 0
-    ! numcount = real((ih-il+1)*(jh-jl+1)) ! Cannot get this working for an arbitrary number of procs atm
-    ! write(*,*) numcount
-    ! ! call MPI_GATHER(Ttemp,numcount,MPI_DOUBLE_PRECISION,Ttot,numcount, &
-    ! !                 MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
+    ! write(*,*) size(Ttemp), (ih-il+1)*(jh-jl+1), size(Ttot)
+    Ttemp = T
+    numcount = real((resih-resil+1)*(resjh-resjl+1)) ! Cannot get this working for an arbitrary number of procs atm
+    ! numcount = 500*250
+    write(*,*) numcount
+    call MPI_GATHER(Ttemp,numcount,MPI_DOUBLE_PRECISION,Ttot,numcount, &
+                    MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
     ! call MPI_GATHER(Ttemp,2,MPI_DOUBLE_PRECISION,Ttot,2, &
     !                 MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
 
@@ -235,11 +289,32 @@ program test
     !     write(*,*) 'Output after gathering data'
     !     write(*,1600) Ttot
     ! end if
+
+    ! write(*,*) 'im here'
+    ! write(*,*) size(Ttot)
     
+
+    if (pid.eq.0) then
+
+        allocate(x(ny))
+        allocate(y(nx))
+        
+        ! x is in the j direction, y is in the i direction
+        do i = 1,ny
+            y(i) = (i-1)*dy
+        end do
+        do j = 1,nx
+            x(j) = (j-1)*dx
+        end do
+
+        ! Writing updated initial distribution to file
+        write(file_name, "(A14)") "Tecplotmax.tec"
+        call tec_2D ( iunit, nx, ny, x, y, Ttot, file_name )
+    end if
     
     ! NOTE: Need to update this to match the number of spatial divisions (nx)
     1100 FORMAT(8(F20.10,1x))
-    1600 FORMAT(9(F10.6,1x))
+    1600 FORMAT(8(F10.6,1x))
     1400 FORMAT(8(F14.8,1x))
     1200 FORMAT(I2.1,I2.1,6(F8.4,1x))
     1300 FORMAT(I2.1,6(F10.8,1x))
@@ -248,3 +323,42 @@ program test
     CALL MPI_FINALIZE(ierr)
 
 end program test
+
+
+
+    ! SUBROUTINES
+!----------------------------------------------------------------------------- 
+subroutine tec_2D ( iunit, nx, ny, x, y, T, file_name )
+
+  IMPLICIT NONE
+
+  Integer ( kind = 4 ) iunit,nx,ny,i,j,ierr
+  Real ( kind = 8 ) T(nx,ny)
+  Real ( kind = 8 ) x(ny)
+  Real ( kind = 8 ) y(nx)
+  Character(len=1024) :: file_name
+
+!   Character(80), parameter ::  file_name = 'TecPlot2Dnew.tec'
+
+  open ( unit = iunit, file = file_name, form = 'formatted', access = 'sequential', status = 'replace', iostat = ierr )
+
+  if ( ierr /= 0 ) then
+    write ( *, '(a)' ) '  Error opening file : tecplot_2D '
+    stop
+  end if
+   
+  write ( iunit, '(a)' ) 'Title="' // trim ( 'Temperature Data' ) // '"'
+  write ( iunit, '(a)' ) 'Variables=' // trim ( '"X","Y","T"' )
+
+  write ( iunit, '(a)' ) ' '
+  write ( iunit, '(a,i6,a,i6,a)' ) 'Zone I=', ny, ', J=', nx, ', F=POINT'
+ 
+  do j = 1, nx
+    do i = 1, ny
+      write ( iunit, '(2f10.3,g15.6)' ) y(i), x(j), T(i,j)
+    end do
+  end do
+  
+  close ( unit = iunit )
+
+end subroutine tec_2D

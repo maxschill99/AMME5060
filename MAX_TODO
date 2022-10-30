@@ -24,6 +24,9 @@ check over looping indices for residual
 use new boundary condition
 
 
+output tecplot from maxtest.f90
+
+
 Conjugate gradient method
 TO DO:
     Update preconditioning solver
@@ -33,6 +36,23 @@ QUESTIONS
 
 
 
+	! ! Computing residual matrix
+	! call respar(aw,ae,an,as,ap,b,T,resil,resih,resjl,resjh,resmat)
+
+	! ! Calculate Domain averaged residual for stopping critterion
+	! rcurrent = SUM(SUM(ABS(resmat(resil:resih,resjl:resjh)),1),1) / ((resih-resil+1)*(resjh-resjl+1))
+	! ! write(*,*) rcurrent, rc
+
+	! ! ! Combining all residuals on each processor and sending to processor 0
+	! call MPI_REDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
+
+	! ! Getting global averaged residual
+	! if (pid == 0) then
+	! 	rc = rc/nprocs
+	! end if
+
+	! ! Sending out global residual to each processor
+	! call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
 
 
         if (time == 0) then

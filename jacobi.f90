@@ -38,7 +38,8 @@ module jacobi
         do j = jl+1,jh-1
             do i = il+1,ih-1
                 Tn(i,j) = T(i+1,j)*an(i,j) + T(i-1,j)*as(i,j) + T(i,j+1)*ae(i,j) &
-                    + T(i,j-1)*aw(i,j) + T(i,j)*ap(i,j)           
+                    + T(i,j-1)*aw(i,j) + T(i,j)*ap(i,j)
+                ! Tn(i,j) = T(i,j)*ap(i,j) + alpha*dt*((T(i,j+1)+T(i,j-1))/(dx**2)) + alpha*dt*((T(i+1,j)+T(i-1,j))/(dy**2))         
             end do
         end do
 

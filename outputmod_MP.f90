@@ -41,8 +41,8 @@ MODULE outputmodule
 		write ( iunit, '(a)' ) ' '
 		write ( iunit, '(a,i6,a,i6,a)' ) 'Zone I=', ny, ', J=', nx, ', F=POINT'
 		 
-		do j = 1, ny ! loop through columns left to right
-			do i = 1, nx ! loop through rows top to bottom
+		do j = 1, nx ! loop through columns left to right
+			do i = 1, ny ! loop through rows top to bottom
 				write ( iunit, '(2f10.3,g15.6)' ) x(j), y(i), T(i,j)
 			end do
 		end do

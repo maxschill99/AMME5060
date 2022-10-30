@@ -120,40 +120,69 @@ PROGRAM MAIN
 
 	! Initialising boundary conditions on temp array
 	call solutioninit(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
-	! write(*,1600) T
-	! ! Checking what size the A matrix coefficients are
-	! write(*,*) 'A matrix coefficients'
-	! write(*,*) an(1,1), as(1,1), ae(1,1), aw(1,1), ap(1,1)
+
+	! FINALISE INITIALISATION OF TEMP ARRAY
+	! Need to check how to get this to work for other topographies
+	! T(:,1) = 0
+	! T(:,nx) = 0
+	if (pid == 0) then
+		T(:,il) = 0
+	elseif (pid == nprocs-1) then
+		T(:,ih) = 0
+	end if
+
+	!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	! JUST DOING MY OWN TECPLOT FILE WRITING
+    ! Creating a temp array to combine all processor data
+    ALLOCATE(Ttemp(resil:resih,resjl:resjh))
+
+	if (pid==0) then
+		allocate(Tinittot(nx,ny))
+	end if
+
+    ! RUNNING A CHECK TO SEE IF INTIIAL TEMP IS BEING CALCULATED CORRECTLY
+    Ttemp = T(resil:resih,resjl:resjh)
+
+	npp = nx/nprocs
+    ! Gathering data to processor 1
+    CALL MPI_GATHER(Ttemp,ny*npp,MPI_DOUBLE_PRECISION,Tinittot,ny*npp,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
+
+	allocate(x(jl:jh))
+	allocate(y(il:ih))
+
+	! x is in the j direction, y is in the i direction
+	do i = il,ih
+		y(i) = (i-1)*dy
+	end do
+	do j = jl,jh
+		x(j) = (j-1)*dx
+	end do
+
+	if (pid==0) then
+		write(*,1600) Tinittot
+
+		! Writing updated initial distribution to file
+        write(file_name, "(A14)") "Tecplotmax.tec"
+        call tecplot_2D ( iunit, nx, ny, x, y, Tinittot, file_name )
+	end if
 
 	Tinit = T ! Variable for plotting the initial distribution
+	!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
 	! INITIAL RESIDUAL
 	! Initialising residual matrix
 	allocate(resmat(resil:resih,resjl:resjh))
 	resmat(:,:) = 0.0
-	! Computing residual matrix
-	call respar(aw,ae,an,as,ap,b,T,resil,resih,resjl,resjh,resmat)
-
-	! Calculate Domain averaged residual for stopping critterion
-	rcurrent = SUM(SUM(ABS(resmat(resil:resih,resjl:resjh)),1),1) / ((resih-resil+1)*(resjh-resjl+1))
-	! write(*,*) rcurrent, rc
-
-	! ! Combining all residuals on each processor and sending to processor 0
-	call MPI_REDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
-
-	! Getting global averaged residual
-	if (pid == 0) then
-		rc = rc/nprocs
-	end if
-
-	! Sendind out global residual to each processor
-	call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
+	rc = 1
 
 	! Stability criterion check
-	CFL = alpha*(1/(dx**2) + 1/(dy**2))*dt
-	write(*,*) 'Stability criterion: ', CFL
-	if (CFL.GT.0.25) then
-		write(*,*) 'Stability criterion not met, needs to be less than 0.25'
+	CFL = (1/(dx**2) + 1/(dy**2))*alpha*dt
+	if (pid.eq.0) then
+		write(*,*) 'Stability criterion: ', CFL
+	end if
+	if (CFL.GT.0.5) then
+		write(*,*) 'Stability criterion not met, needs to be less than 0.5'
 		STOP
 	elseif (CFL.LT.0) then
 		write(*,*) 'Stability criterion less than 0'
@@ -630,9 +659,28 @@ PROGRAM MAIN
 
     END SELECT
 
-    write(*,*) 'Output after solver'
-    ! write(*,1600) T
-	write(*,*) iter, time, rc
+	if (pid.eq.0) then
+		write(*,*) 'Output after solver'
+		! write(*,1600) Tfinal
+		write(*,*) '-----------------------------------------'
+		write(*,*) 'Time =', time
+		write(*,*) 'Iteration =', iter
+		write(*,*) 'Residual =', rc
+		write(*,*) 'CFL =', CFL
+		! Checking what size the A matrix coefficients are
+		write(*,*) 'A matrix coefficients'
+		! write(*,*) an(1,1), as(1,1), ae(1,1), aw(1,1), ap(1,1)
+		write(*,*) 'an =', an(1,1)
+		write(*,*) 'as =', as(1,1)
+		write(*,*) 'ae =', ae(1,1)
+		write(*,*) 'aw =', aw(1,1)
+		write(*,*) 'ap =', ap(1,1)
+		write(*,*) 'b =', b(1,1)
+	end if
+	write(*,*) pid,il,ih,jl,jh
+	write(*,*) pid, resil,resih,resjl,resjh
+
+
 	
 	
 	
@@ -665,7 +713,7 @@ CALL MPI_FINALIZE(ierr)
 
     ! NOTE: Need to update this to match the number of spatial divisions (nx)
     1100 FORMAT(8(F20.10,1x))
-    1600 FORMAT(7(F14.8,1x))
+    1600 FORMAT(8(F14.8,1x))
     1400 FORMAT(8(F14.8,1x))
     1200 FORMAT(I2.1,I2.1,6(F8.4,1x))
     1300 FORMAT(I2.1,6(F10.8,1x))
