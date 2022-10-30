@@ -9,6 +9,13 @@ set up solver for both conjugate gradient and normal - need to properly set up i
 get communication and solution initialisation sorted - for parallelisation
 try to implement red-black jacobi solver
 
+% MAIN %
+set a constant boundary condition
+change boundary conditions
+fix residual using allreduce
+work on conjugate gradient stuff
+plot initial temp distribution
+
 Implement local indices
 Implement communication
 Initialise variables with parallelisation
@@ -34,7 +41,39 @@ TO DO:
 QUESTIONS
     Where does the communication occur in the conjugate gradient method
 
+! ! JUST DOING MY OWN TECPLOT FILE WRITING
+    ! ! Creating a temp array to combine all processor data
+    ! ALLOCATE(Ttemp(resil:resih,resjl:resjh))
 
+	! if (pid==0) then
+		! allocate(Tinittot(nx,ny))
+	! end if
+
+    ! ! RUNNING A CHECK TO SEE IF INTIIAL TEMP IS BEING CALCULATED CORRECTLY
+    ! Ttemp = T(resil:resih,resjl:resjh)
+
+	! npp = nx/nprocs
+    ! ! Gathering data to processor 1
+    ! CALL MPI_GATHER(Ttemp,ny*npp,MPI_DOUBLE_PRECISION,Tinittot,ny*npp,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
+
+	! allocate(x(jl:jh))
+	! allocate(y(il:ih))
+
+	! ! x is in the j direction, y is in the i direction
+	! do i = il,ih
+		! y(i) = (i-1)*dy
+	! end do
+	! do j = jl,jh
+		! x(j) = (j-1)*dx
+	! end do
+
+	! if (pid==0) then
+		! write(*,1600) Tinittot
+
+		! ! Writing updated initial distribution to file
+        ! write(file_name, "(A14)") "Tecplotmax.tec"
+        ! call tecplot_2D ( iunit, nx, ny, x, y, Tinittot, file_name )
+	! end if
 
 	! ! Computing residual matrix
 	! call respar(aw,ae,an,as,ap,b,T,resil,resih,resjl,resjh,resmat)
