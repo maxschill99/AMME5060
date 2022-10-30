@@ -126,45 +126,45 @@ PROGRAM MAIN
 	! T(:,1) = 0
 	! T(:,nx) = 0
 	if (pid == 0) then
-		T(:,il) = 0
+		T(:,il) = 0.
 	elseif (pid == nprocs-1) then
-		T(:,ih) = 0
+		T(:,ih) = 0.
 	end if
 
-	!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	! JUST DOING MY OWN TECPLOT FILE WRITING
-    ! Creating a temp array to combine all processor data
-    ALLOCATE(Ttemp(resil:resih,resjl:resjh))
+	! !!!!!!!!!!!!!!!!!!!!!!!!!!!
+	! ! JUST DOING MY OWN TECPLOT FILE WRITING
+    ! ! Creating a temp array to combine all processor data
+    ! ALLOCATE(Ttemp(resil:resih,resjl:resjh))
 
-	if (pid==0) then
-		allocate(Tinittot(nx,ny))
-	end if
+	! if (pid==0) then
+		! allocate(Tinittot(nx,ny))
+	! end if
 
-    ! RUNNING A CHECK TO SEE IF INTIIAL TEMP IS BEING CALCULATED CORRECTLY
-    Ttemp = T(resil:resih,resjl:resjh)
+    ! ! RUNNING A CHECK TO SEE IF INTIIAL TEMP IS BEING CALCULATED CORRECTLY
+    ! Ttemp = T(resil:resih,resjl:resjh)
 
-	npp = nx/nprocs
-    ! Gathering data to processor 1
-    CALL MPI_GATHER(Ttemp,ny*npp,MPI_DOUBLE_PRECISION,Tinittot,ny*npp,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
+	! npp = nx/nprocs
+    ! ! Gathering data to processor 1
+    ! CALL MPI_GATHER(Ttemp,ny*npp,MPI_DOUBLE_PRECISION,Tinittot,ny*npp,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
 
-	allocate(x(jl:jh))
-	allocate(y(il:ih))
+	! allocate(x(jl:jh))
+	! allocate(y(il:ih))
 
-	! x is in the j direction, y is in the i direction
-	do i = il,ih
-		y(i) = (i-1)*dy
-	end do
-	do j = jl,jh
-		x(j) = (j-1)*dx
-	end do
+	! ! x is in the j direction, y is in the i direction
+	! do i = il,ih
+		! y(i) = (i-1)*dy
+	! end do
+	! do j = jl,jh
+		! x(j) = (j-1)*dx
+	! end do
 
-	if (pid==0) then
-		write(*,1600) Tinittot
+	! if (pid==0) then
+		! write(*,1600) Tinittot
 
-		! Writing updated initial distribution to file
-        write(file_name, "(A14)") "Tecplotmax.tec"
-        call tecplot_2D ( iunit, nx, ny, x, y, Tinittot, file_name )
-	end if
+		! ! Writing updated initial distribution to file
+        ! write(file_name, "(A14)") "Tecplotmax.tec"
+        ! call tecplot_2D ( iunit, nx, ny, x, y, Tinittot, file_name )
+	! end if
 
 	Tinit = T ! Variable for plotting the initial distribution
 	!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -246,9 +246,7 @@ PROGRAM MAIN
 		ALLOCATE( subarray_col_start(1:Nprocs) )
 	END IF
 	
-	
 	! ---- RECIEVE SUBARRAY TYPE ----
-
 	! Gather subarray information from all processors
 		! Subarray row sizes
 		CALL MPI_GATHER( subarray_Nrows, 1, MPI_INTEGER, subarray_rows_array, 1, MPI_INTEGER, 0, COMM_TOPO, ierr )
@@ -258,8 +256,7 @@ PROGRAM MAIN
 		CALL MPI_GATHER( node_low_y-1, 	 1, MPI_INTEGER, subarray_row_start,  1, MPI_INTEGER, 0, COMM_TOPO, ierr )
 		! Start column location in the final matrix (minus 1 because start location starts at zero)
 		CALL MPI_GATHER( node_low_x-1, 	 1, MPI_INTEGER, subarray_col_start,  1, MPI_INTEGER, 0, COMM_TOPO, ierr )
-		
-
+			
 	! SOLVING
 
     SELECT CASE (solvertype)
@@ -374,12 +371,11 @@ PROGRAM MAIN
 						
 							! Receiving with this new receiving subarray type
 							CALL MPI_IRECV( Tfinal, 1, RECVSUBBARAY, &
-								i, tag2, COMM_TOPO, request_array(i+2), ierr)
+								i, tag2, COMM_TOPO, request_array_gather(i+2), ierr)
 						END DO
 
-						CALL MPI_WAITALL(Nprocs+1, request_array, status_array, ierr)
-						
-						
+						CALL MPI_WAITALL(Nprocs+1, request_array_gather, status_array_gather, ierr)
+												
 						! --- PUTTING INTO FILE ---
 						! x vector of whole domain (could have also done a mpi_gatherv)
 						xtot 	= 0. + dx * [(i, i=0,(nx-1))] ! Implied DO loop used
@@ -611,10 +607,10 @@ PROGRAM MAIN
 						
 							! Receiving with this new receiving subarray type
 							CALL MPI_IRECV( Tfinal, 1, RECVSUBBARAY, &
-								i, tag2, COMM_TOPO, request_array(i+2), ierr)
+								i, tag2, COMM_TOPO, request_array_gather(i+2), ierr)
 						END DO
 
-						CALL MPI_WAITALL(Nprocs+1, request_array, status_array, ierr)
+						CALL MPI_WAITALL(Nprocs+1, request_array_gather, status_array_gather, ierr)
 						
 						
 						! --- PUTTING INTO FILE ---
@@ -719,3 +715,10 @@ CALL MPI_FINALIZE(ierr)
     1300 FORMAT(I2.1,6(F10.8,1x))
 
 END PROGRAM MAIN
+
+! b - matrix
+subroutine printmatrix(b,n,m)
+	integer::n,m
+	real (kind=8)::b(n,m) !n = # rows, m = # columns
+	do i=1,n; print '(20f6.2)',b(i,1:m); enddo
+endsubroutine
