@@ -15,6 +15,7 @@ change boundary conditions
 fix residual using allreduce
 work on conjugate gradient stuff
 plot initial temp distribution
+test for longer time period/smaller residual
 
 Implement local indices
 Implement communication
