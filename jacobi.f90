@@ -32,7 +32,6 @@ module jacobi
         Integer(kind = 8), INTENT(IN) :: il,ih,jl,jh
         Real(kind=8), INTENT(INOUT) :: T(il:ih,jl:jh)
 
-        Real(kind = 8) :: Tn(il:ih,jl:jh)
         Integer :: i,j
 
         do j = jl+1,jh-1
@@ -66,15 +65,17 @@ module jacobi
         Integer(kind = 8), INTENT(IN) :: il,ih,jl,jh
         Real(kind=8), INTENT(INOUT) :: T(il:ih,jl:jh)
 
-        Real(kind=8) :: Tn(il:ih,jl:jh)
         Integer :: i,j
 
-        ! do j = 2,(ny-1),2
-        do j = jl+1,jh-1,2
-            ! do i = 2,(nx-1),2
-            do i = il+1,ih-1,2
+        do j = jl+1,jh-1
+            do i = il+1 + mod(j,2),ih-1,2
+                ! UNSTEADY
                 Tn(i,j) = T(i+1,j)*an(i,j) + T(i-1,j)*as(i,j) + T(i,j+1)*ae(i,j) &
                     + T(i,j-1)*aw(i,j) + T(i,j)*ap(i,j)
+
+                ! ! STEADY
+                ! Tn(i,j) = (alpha*((T(i,j+1)+T(i,j-1))/(dx**2)) & 
+                !             + alpha*((T(i+1,j)+T(i-1,j))/(dy**2)))/((2*alpha)/dx**2 + (2*alpha)/dy**2) 
             end do
         end do
 
@@ -90,13 +91,10 @@ module jacobi
         Integer(kind = 8), INTENT(IN) :: il,ih,jl,jh
         Real(kind=8), INTENT(INOUT) :: T(il:ih,jl:jh)
 
-        Real(kind=8) :: Tn(il:ih,jl:jh)
         Integer :: i,j
 
-        ! do j = 3,(ny-1),2
-        do j = jl+2,jh-2,2
-            ! do i = 3,(nx-1),2
-            do i = il+2,ih-2,2
+        do j = jl+1,jh-1
+            do i = il+2 - mod(j,2),ih-1,2
                 Tn(i,j) = T(i+1,j)*an(i,j) + T(i-1,j)*as(i,j) + T(i,j+1)*ae(i,j) &
                     + T(i,j-1)*aw(i,j) + T(i,j)*ap(i,j)
             end do

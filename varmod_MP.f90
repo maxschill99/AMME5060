@@ -51,6 +51,7 @@ MODULE variablemodule
     ! Solution solver variables
     Real(kind = 8) :: rcurrent, rc, time
     Real(kind = 8), allocatable :: Told(:,:), Tn(:,:), resmat(:,:)
+	Integer :: req1, req2
 
     ! Gathering variables for final solution
     Real(kind = 8), allocatable :: Ttemp(:,:), Ttot(:,:), Tinit(:,:), Tinittot(:,:)
@@ -88,8 +89,8 @@ MODULE variablemodule
 		!! - Problem Physical Parameters
 		Lx		= 1. 				! x-domain length
 		Ly		= 1.				! y-domain length
-		alpha 	= 0.128E-6			! Pizza Crust Thermal Diffusivity [m^2/s] (from https://www.tandfonline.com/doi/pdf/10.1081/JFP-120015599)
-		! alpha = 1
+		! alpha 	= 0.128E-6			! Pizza Crust Thermal Diffusivity [m^2/s] (from https://www.tandfonline.com/doi/pdf/10.1081/JFP-120015599)
+		alpha = 0.001
 
 		!! - File I/O
 		iunit 	= 11 				! I/O unit number
@@ -99,8 +100,8 @@ MODULE variablemodule
 		ny 		= 15 !500				! Number of points in domain in y direction (evenly spaced)
 		dx 		= Lx/(nx-1)			! Spatial step based on desired number of points [m]
 		dy 		= Ly/(ny-1)			! Spatial step based on desired number of points [m]
-		Ntsteps = 1000				! Number of time steps
-		t_final = 600.				! [s] &&& just a guess for now
+		Ntsteps = 100000			! Number of time steps
+		t_final = 5.				! [s] &&& just a guess for now
 		dt		= t_final/Ntsteps 	! Time step size [s]
 		
 		!! - Send/Recv -
