@@ -81,6 +81,14 @@ MODULE variablemodule
 
 	SUBROUTINE intialise()
 	
+	! CHANGE WHAT'S IN HERE, MARK
+	! ---------------------------------------------------------------------------------------------------
+		nx 		= 15 !500				! Number of points in domain in x direction (evenly spaced)
+		ny 		= 15 !500				! Number of points in domain in y direction (evenly spaced)
+		res_max = 1e-7					! Maximum residual value
+		dt		= t_final/Ntsteps 		! Time step size [s]
+	! ---------------------------------------------------------------------------------------------------	
+	
 		! Universal constants
 		pi = ACOS(-1.)
 	
@@ -95,20 +103,18 @@ MODULE variablemodule
 		iunit 	= 11 				! I/O unit number
 	
 		!! - Modelling-specific Parameters
-		nx 		= 15 !500				! Number of points in domain in x direction (evenly spaced)
-		ny 		= 15 !500				! Number of points in domain in y direction (evenly spaced)
 		dx 		= Lx/(nx-1)			! Spatial step based on desired number of points [m]
 		dy 		= Ly/(ny-1)			! Spatial step based on desired number of points [m]
 		Ntsteps = 1000				! Number of time steps
 		t_final = 600.				! [s] &&& just a guess for now
-		dt		= t_final/Ntsteps 	! Time step size [s]
+		
 		
 		!! - Send/Recv -
 		tag		= 1
 		tag2	= 5
 		
 		!! - Iteration Loops -
-		res_max = 1e-7				! Maximum residual value
+		
 		iter_max= 200000 			! Maximum number of iterations allowed
 		k 		= 1					! Starting loop counter
 	
