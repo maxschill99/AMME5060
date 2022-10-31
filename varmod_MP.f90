@@ -95,8 +95,8 @@ MODULE variablemodule
 		iunit 	= 11 				! I/O unit number
 	
 		!! - Modelling-specific Parameters
-		nx 		= 500				! Number of points in domain in x direction (evenly spaced)
-		ny 		= 500				! Number of points in domain in y direction (evenly spaced)
+		nx 		= 15 !500				! Number of points in domain in x direction (evenly spaced)
+		ny 		= 15 !500				! Number of points in domain in y direction (evenly spaced)
 		dx 		= Lx/(nx-1)			! Spatial step based on desired number of points [m]
 		dy 		= Ly/(ny-1)			! Spatial step based on desired number of points [m]
 		Ntsteps = 1000				! Number of time steps

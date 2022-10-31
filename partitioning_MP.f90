@@ -147,12 +147,12 @@ MODULE partitionmodule
 					cumulative_neighbours = cumulative_neighbours+1
 					edges(cumulative_neighbours) = zsouth
 				END IF
-				IF ( (d.NE.1).OR.(e.NE.1) ) THEN	
+				IF ( (d.NE.1).OR.(e.NE.1).AND.(r .NE. 0) ) THEN	
 					zwest1 = alloc_pid - (n+1)
 					cumulative_neighbours = cumulative_neighbours+1
 					edges(cumulative_neighbours) = zwest1
 				END IF
-				IF ( (d.EQ.1).AND.(e.LT. n+1) )	THEN
+				IF ( (d.EQ.1).AND.(e.LT. n+1).AND.(r .NE. 0))	THEN
 					zwest2 = alloc_pid - n
 					cumulative_neighbours = cumulative_neighbours+1
 					edges(cumulative_neighbours) = zwest2
@@ -180,6 +180,10 @@ MODULE partitionmodule
 				
 				! Adding to indexes array needed to define the graph topology communicator later
 				indexes(alloc_pid+1) = cumulative_neighbours
+				
+				IF (pid .EQ. alloc_pid) THEN
+					WRITE(*,*) "i am pid", pid, north, south, east1, east2, west1, west2
+				end if
 
 			END DO
 		END DO
