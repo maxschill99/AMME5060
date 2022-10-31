@@ -115,50 +115,30 @@ t1 = MPI_WTIME()
 	il = ind_low_y; ih = ind_high_y; jl = ind_low_x; jh = ind_high_x ! Indices for temperature calculations
 	resil = node_low_y; resih = node_high_y; resjl = node_low_x; resjh = node_high_x ! Nodes for residual calculations
 
+	!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	! INITIALISE TEMP DISTRIBUTION 
 	! boundary conditions most pizza like
 	! Allocation of variable sizes
 	call allocatevars(an,as,ae,aw,ap,b,T,Told,Tn,res,il,ih,jl,jh)
 
-
+	!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	! Initialising boundary conditions on temp array
 	call solutioninit(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
 
 	! !!!!!!!!!!!!!!!!!!!!!!!!!!!
-	! Solver Boundary conditions
-	T(:,:) = 0
+	! Initialising new temp array and setting its value to T
 	Tn(:,:) = 0
-
-	allocate(x(jl:jh))
-    do j = jl,jh
-        x(j) = (j-1)*dx
-    end do
-
-	do j = jl,jh
-		T(1,j) = sin((pi*x(j))/Lx)
-		! T(1,j) = (-90/Lx)*x(j)*(x(j)-Lx)*exp(-0.545*(Lx/2))
-	end do
-
-	! Edge boundary conditions
-	if (ih.eq.ny) then
-		T(ny,:) = 0
-	elseif (jl.eq.1) then
-		T(:,1) = 0
-	elseif (jh.eq.nx) then
-		T(:,nx) = 0
-	end if
-
 	Tn = T
+
 	!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
 	! INITIAL RESIDUAL
 	! Initialising residual matrix
 	allocate(resmat(resil:resih,resjl:resjh))
 	resmat(:,:) = 0.0
 	rc = 1
 
-	! Stability criterion check
+	!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	! STABILITY CRITERION CHECK
 	CFL = (1/(dx**2) + 1/(dy**2))*alpha*dt
 	if (pid.eq.0) then
 		write(*,*) 'Stability criterion: ', CFL
@@ -171,6 +151,7 @@ t1 = MPI_WTIME()
 		STOP
 	end if
 
+	!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	! Initialising time counter and iteration counter
 	time = 0
 	iter = 0
@@ -293,9 +274,10 @@ t1 = MPI_WTIME()
 				! Summing processor residuals to get global resiudal and broadcasting to get average
 				call MPI_ALLREDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,COMM_TOPO,ierr)
 				rc = rc/nprocs
+
 				!-------------------------------------------------------------------!
-				! Printing to screen after a certain number of iterations
-                if (mod(iter,100).eq.0) then
+				! Printing to screen after a certain amount of time
+				if ((time-int(time))==0) then
 
 					! TECPLOT
 
@@ -336,7 +318,7 @@ t1 = MPI_WTIME()
 						ytot 	= 0. + dy * [(i, i=0,(ny-1))] ! Implied DO loop used
 
 						! Writing updated solution to file at each new iteration
-						write(file_name, "(A9,I5,A4)") "TecPlot2D",iter,".tec"
+						write(file_name, "(A9,I5,A4)") "TecPlot2D",int(time),".tec"
 						CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tfinal,  file_name )
 
 						write(*,*) '-----------------------------------------'
@@ -521,8 +503,8 @@ t1 = MPI_WTIME()
 				rc = rc/nprocs
 
 				!-------------------------------------------------------------------!
-                ! Printing to screen after a certain number of iterations
-                if (mod(iter,100).eq.0) then
+				! Printing to screen after a certain amount of time
+				if ((time-int(time))==0) then
 					! TECPLOT
 
 					! --------------------------------------------------------------------------------------- 
@@ -606,17 +588,24 @@ t1 = MPI_WTIME()
 		write(*,*) 'CFL =', CFL
 		t2 = MPI_WTIME()
 		write(*,*) 'Computational time =', t2-t1, 'seconds'
+		write(*,*) 'Average Temperature =', sum(sum((Tfinal),1),1)/(nx*ny)
 		write(*,*) '-----------------------------------------'
-	! 	! Checking what size the A matrix coefficients are
-	! 	write(*,*) 'A matrix coefficients'
-	! 	! write(*,*) an(1,1), as(1,1), ae(1,1), aw(1,1), ap(1,1)
-	! 	write(*,*) 'an =', an(1,1)
-	! 	write(*,*) 'as =', as(1,1)
-	! 	write(*,*) 'ae =', ae(1,1)
-	! 	write(*,*) 'aw =', aw(1,1)
-	! 	write(*,*) 'ap =', ap(1,1)
-	! 	write(*,*) 'b =', b(1,1)
+
+		! Writing the final iteration to a tecplot file
+		write(file_name, "(A9,I5,A4)") "TecPlot2D",int(time),".tec"
+		CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tfinal,  file_name )
+
+		! 	! Checking what size the A matrix coefficients are
+		! 	write(*,*) 'A matrix coefficients'
+		! 	! write(*,*) an(1,1), as(1,1), ae(1,1), aw(1,1), ap(1,1)
+		! 	write(*,*) 'an =', an(1,1)
+		! 	write(*,*) 'as =', as(1,1)
+		! 	write(*,*) 'ae =', ae(1,1)
+		! 	write(*,*) 'aw =', aw(1,1)
+		! 	write(*,*) 'ap =', ap(1,1)
+		! 	write(*,*) 'b =', b(1,1)
 	end if
+	! Outputting the domain indices
 	! write(*,*) nx, ny
 	! write(*,*) pid,il,ih,jl,jh
 	! write(*,*) pid, resil,resih,resjl,resjh

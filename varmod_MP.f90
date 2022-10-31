@@ -83,10 +83,10 @@ MODULE variablemodule
 	
 	! CHANGE WHAT'S IN HERE, MARK
 	! ---------------------------------------------------------------------------------------------------
-		nx 		= 15 !500				! Number of points in domain in x direction (evenly spaced)
-		ny 		= 15 !500				! Number of points in domain in y direction (evenly spaced)
-		res_max = 1e-7					! Maximum residual value
-		dt		= t_final/Ntsteps 		! Time step size [s]
+		nx 		= 64				! Number of points in domain in x direction (evenly spaced)
+		ny 		= 64				! Number of points in domain in y direction (evenly spaced)
+		res_max = 1e-8					! Maximum residual value
+		dt		= 0.25 		! Time step size [s]
 	! ---------------------------------------------------------------------------------------------------	
 	
 		! Universal constants
@@ -96,8 +96,7 @@ MODULE variablemodule
 		!! - Problem Physical Parameters
 		Lx		= 1. 				! x-domain length
 		Ly		= 1.				! y-domain length
-		alpha 	= 0.128E-6			! Pizza Crust Thermal Diffusivity [m^2/s] (from https://www.tandfonline.com/doi/pdf/10.1081/JFP-120015599)
-		! alpha = 1
+		alpha 	= 1E-4			! Pizza Crust Thermal Diffusivity [m^2/s] (from https://www.tandfonline.com/doi/pdf/10.1081/JFP-120015599)
 
 		!! - File I/O
 		iunit 	= 11 				! I/O unit number
@@ -105,8 +104,7 @@ MODULE variablemodule
 		!! - Modelling-specific Parameters
 		dx 		= Lx/(nx-1)			! Spatial step based on desired number of points [m]
 		dy 		= Ly/(ny-1)			! Spatial step based on desired number of points [m]
-		Ntsteps = 1000				! Number of time steps
-		t_final = 600.				! [s] &&& just a guess for now
+		t_final = 20.				! [s] &&& just a guess for now
 		
 		
 		!! - Send/Recv -

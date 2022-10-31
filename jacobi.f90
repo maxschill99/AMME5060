@@ -95,8 +95,13 @@ module jacobi
 
         do j = jl+1,jh-1
             do i = il+2 - mod(j,2),ih-1,2
+                ! UNSTEADY
                 Tn(i,j) = T(i+1,j)*an(i,j) + T(i-1,j)*as(i,j) + T(i,j+1)*ae(i,j) &
                     + T(i,j-1)*aw(i,j) + T(i,j)*ap(i,j)
+
+                ! ! STEADY
+                ! Tn(i,j) = (alpha*((T(i,j+1)+T(i,j-1))/(dx**2)) & 
+                !             + alpha*((T(i+1,j)+T(i-1,j))/(dy**2)))/((2*alpha)/dx**2 + (2*alpha)/dy**2) 
             end do
         end do
 
@@ -112,14 +117,15 @@ module jacobi
     !-------------------------------------------------------------------------------------------!
     !-------------------------------------------------------------------------------------------!
     ! jacobi preconditioner for conjugate gradient
-    SUBROUTINE jacobiprecon(ae,aw,an,as,ap,b,Minv,T)
+    SUBROUTINE jacobiprecon(ae,aw,an,as,ap,b,Minv,T,il,jl,ih,jh)
 
         IMPLICIT NONE
         Real(kind = 8), INTENT(IN) :: ae(nx,ny), aw(nx,ny), an(nx,ny), as(nx,ny), ap(nx,ny), b(nx,ny), Minv(nx,ny)
         Real(kind = 8), INTENT(INOUT) :: T(nx,ny)
+        Integer(kind = 8), INTENT(IN) :: il,jl,ih,jh
 
         Real(kind = 8) :: res(nx,ny)
-        Integer(kind = 8) :: i,j,ii, niter_precon, il,jl,ih,jh
+        Integer(kind = 8) :: i,j,ii, niter_precon
 
         ! Setting number of preconditioning iterations
         niter_precon = 5
@@ -136,7 +142,7 @@ module jacobi
         do ii = 1,niter_precon
         
             ! Get Residual of Current system Ax = b
-            CALL residcalc(aw,ae,an,as,ap,b,T,res)
+            CALL respar(aw,ae,an,as,ap,b,T,il,ih,jl,jh,res)
             
             ! Update Solution
             do j = 1,ny

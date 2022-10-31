@@ -47,13 +47,9 @@ USE variablemodule
         ! jh = ind_high_y
 
         Integer(kind = 8), INTENT(IN) :: il,ih,jl,jh
-        ! Real(kind = 8), INTENT(OUT) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny)
         Real(kind = 8), INTENT(OUT) :: an(il:ih,jl:jh), as(il:ih,jl:jh), ae(il:ih,jl:jh), aw(il:ih,jl:jh), &
          ap(il:ih,jl:jh), b(il:ih,jl:jh), T(il:ih,jl:jh)
 
-        
-        ! Real(kind = 8) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny)
-        ! Real(kind = 8) :: Tin(nx,ny), Tout(nx,ny)
         Real(kind = 8), allocatable :: x(:), y(:)
 
 
@@ -72,9 +68,9 @@ USE variablemodule
             end do
         end do
 
+        ! Allocating and initialising position arrays
         allocate(x(jl:jh))
         allocate(y(il:ih))
-
         ! x is in the j direction, y is in the i direction
         do i = il,ih
             y(i) = (i-1)*dy
@@ -83,8 +79,27 @@ USE variablemodule
             x(j) = (j-1)*dx
         end do
 
-        ! Setting solver boundary conditions
+        ! Initialising temperature matrix
         T(:,:) = 0.0
+
+        ! allocate(x(jl:jh))
+        ! do j = jl,jh
+        !     x(j) = (j-1)*dx
+        ! end do
+
+        ! Setting solver boundary conditions
+        do j = jl,jh
+            T(1,j) = sin((pi*x(j))/Lx)
+        end do
+
+        ! Edge boundary conditions
+        if (ih.eq.ny) then
+            T(ny,:) = 0
+        elseif (jl.eq.1) then
+            T(:,1) = 0
+        elseif (jh.eq.nx) then
+            T(:,nx) = 0
+        end if
 
 
     END SUBROUTINE solutioninit

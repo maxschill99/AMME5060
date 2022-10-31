@@ -6,7 +6,8 @@ ny = nx;
 ndx = 1/(nx-1);
 ndy = ndx;
 nalpha = 1e-4;
-ndt = 0.0001;
+dtold = 1.86e-5;
+ndt = 1/ceil(1/dtold)
 nCFL = 0.25;
 
 syms CFL dx alpha dt
@@ -16,7 +17,7 @@ eqn = CFL == (1/(dx^2) + 1/(dx^2))*alpha*dt;
 % THIS IS THE VALUE THAT YOU ARE CALCULATING FROM THE SOLVER
 % NEED TO UPDATE THE CORRESPNDING VALUES ABOVE
 %%%%%%%%%%%%%%%%%%
-input = dt;
+input = CFL;
 %%%%%%%%%%%%%%%%%%
 
 if input== dt

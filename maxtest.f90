@@ -28,6 +28,7 @@ program test
     ! ! Gathering variables for final solution
     ! Real(kind = 8), allocatable :: Ttemp(:,:), Ttot(:,:)
     ! Real(kind = 8) :: numcount
+    Integer:: req1, req2
 
 
     il = 0; ih = 0; jl = 0; jh = 0
