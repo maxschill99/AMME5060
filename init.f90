@@ -86,12 +86,6 @@ USE variablemodule
         ! Setting solver boundary conditions
         T(:,:) = 0.0
 
-        do j = jl,jh
-            T(1,j) = sin((pi*x(j))/Lx)
-            ! T(1,j) = (-90/Lx)*x(j)*(x(j)-Lx)*exp(-0.545*(Lx/2))
-            T(ny,j) = 0
-        end do
-
 
     END SUBROUTINE solutioninit
 

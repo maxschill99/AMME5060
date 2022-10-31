@@ -121,52 +121,29 @@ PROGRAM MAIN
 	! Initialising boundary conditions on temp array
 	call solutioninit(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
 
-	! FINALISE INITIALISATION OF TEMP ARRAY
-	! Need to check how to get this to work for other topographies
-	! T(:,1) = 0
-	! T(:,nx) = 0
-	if (pid == 0) then
-		T(:,il) = 0.
-	elseif (pid == nprocs-1) then
-		T(:,ih) = 0.
+	! !!!!!!!!!!!!!!!!!!!!!!!!!!!
+	! Solver Boundary conditions
+	T(:,:) = 0
+
+	allocate(x(jl:jh))
+    do j = jl,jh
+        x(j) = (j-1)*dx
+    end do
+
+	do j = jl,jh
+		T(1,j) = sin((pi*x(j))/Lx)
+		! T(1,j) = (-90/Lx)*x(j)*(x(j)-Lx)*exp(-0.545*(Lx/2))
+	end do
+
+	! Edge boundary conditions
+	if (ih.eq.ny) then
+		T(ny,:) = 0
+	elseif (jl.eq.1) then
+		T(:,1) = 0
+	elseif (jh.eq.nx) then
+		T(:,nx) = 0
 	end if
 
-	! !!!!!!!!!!!!!!!!!!!!!!!!!!!
-	! ! JUST DOING MY OWN TECPLOT FILE WRITING
-    ! ! Creating a temp array to combine all processor data
-    ! ALLOCATE(Ttemp(resil:resih,resjl:resjh))
-
-	! if (pid==0) then
-		! allocate(Tinittot(nx,ny))
-	! end if
-
-    ! ! RUNNING A CHECK TO SEE IF INTIIAL TEMP IS BEING CALCULATED CORRECTLY
-    ! Ttemp = T(resil:resih,resjl:resjh)
-
-	! npp = nx/nprocs
-    ! ! Gathering data to processor 1
-    ! CALL MPI_GATHER(Ttemp,ny*npp,MPI_DOUBLE_PRECISION,Tinittot,ny*npp,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
-
-	! allocate(x(jl:jh))
-	! allocate(y(il:ih))
-
-	! ! x is in the j direction, y is in the i direction
-	! do i = il,ih
-		! y(i) = (i-1)*dy
-	! end do
-	! do j = jl,jh
-		! x(j) = (j-1)*dx
-	! end do
-
-	! if (pid==0) then
-		! write(*,1600) Tinittot
-
-		! ! Writing updated initial distribution to file
-        ! write(file_name, "(A14)") "Tecplotmax.tec"
-        ! call tecplot_2D ( iunit, nx, ny, x, y, Tinittot, file_name )
-	! end if
-
-	Tinit = T ! Variable for plotting the initial distribution
 	!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -269,6 +246,11 @@ PROGRAM MAIN
 
 				!-------------------------------------------------------------------!
                 ! Calculation of solution using only jacobi solver
+				! Keeping a constant boundary
+				do j = jl,jh
+            		T(1,j) = sin((pi*x(j))/Lx)
+				end do
+
                 call jac(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
 
 				!-------------------------------------------------------------------!
@@ -330,14 +312,19 @@ PROGRAM MAIN
 				! Calculate Domain averaged residual for stopping critterion
 				rcurrent = SUM(SUM(ABS(resmat(resil:resih,resjl:resjh)),1),1) / ((resih-resil+1)*(resjh-resjl+1))
 
-                ! ! Combining all residuals on each processor and sending to processor 0
-                call MPI_REDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
+                ! ! ! Combining all residuals on each processor and sending to processor 0
+                ! call MPI_REDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
 
-                if (pid == 0) then
-                    rc = rc/nprocs
-                end if
+                ! if (pid == 0) then
+                !     rc = rc/nprocs
+                ! end if
 
-                call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
+                ! call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
+
+
+				! Summing processor residuals to get global resiudal and broadcasting to get average
+				call MPI_ALLREDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr)
+				rc = rc/nprocs
 
 
 				!-------------------------------------------------------------------!
@@ -385,10 +372,6 @@ PROGRAM MAIN
 						! Writing updated solution to file at each new iteration
 						write(file_name, "(A9,I5,A4)") "TecPlot2D",iter,".tec"
 						CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tfinal,  file_name )
-
-						! Writing updated initial distribution to file
-						write(file_name, "(A17)") "TecPlot2Dinit.tec"
-						CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tinit,  file_name )
 						
 					END IF
 
@@ -673,8 +656,8 @@ PROGRAM MAIN
 		write(*,*) 'ap =', ap(1,1)
 		write(*,*) 'b =', b(1,1)
 	end if
-	write(*,*) pid,il,ih,jl,jh
-	write(*,*) pid, resil,resih,resjl,resjh
+	! write(*,*) pid,il,ih,jl,jh
+	! write(*,*) pid, resil,resih,resjl,resjh
 
 
 	
