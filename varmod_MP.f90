@@ -87,6 +87,7 @@ MODULE variablemodule
 		ny 		= 64				! Number of points in domain in y direction (evenly spaced)
 		res_max = 1e-8					! Maximum residual value
 		dt		= 0.25 		! Time step size [s]
+		t_final = 20.				! [s] &&& just a guess for now - CHANGE TO WHATEVER'S APPROPRIATE
 	! ---------------------------------------------------------------------------------------------------	
 	
 		! Universal constants
@@ -104,7 +105,6 @@ MODULE variablemodule
 		!! - Modelling-specific Parameters
 		dx 		= Lx/(nx-1)			! Spatial step based on desired number of points [m]
 		dy 		= Ly/(ny-1)			! Spatial step based on desired number of points [m]
-		t_final = 20.				! [s] &&& just a guess for now
 		
 		
 		!! - Send/Recv -
