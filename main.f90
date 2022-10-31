@@ -29,6 +29,9 @@ PROGRAM MAIN
 	CALL MPI_COMM_RANK(MPI_COMM_WORLD, pid, ierr) ! Getting processor ID number
 	CALL MPI_COMM_SIZE(MPI_COMM_WORLD, Nprocs, ierr) ! Getting number of total processors in global communicator
 
+! Begin timer
+t1 = MPI_WTIME()
+
 ! INITIALISE PARTITIONING
 	! module
 	! outputs - local x, local y, low + high indxx, low + high indxy, low + high nodex, low + high nodey, all neighbour pid vals, idx east1/east2/west1/west2, number of send/recv points toe neighbours (east1/east2/west1/west2) 
@@ -124,6 +127,7 @@ PROGRAM MAIN
 	! !!!!!!!!!!!!!!!!!!!!!!!!!!!
 	! Solver Boundary conditions
 	T(:,:) = 0
+	Tn(:,:) = 0
 
 	allocate(x(jl:jh))
     do j = jl,jh
@@ -144,6 +148,7 @@ PROGRAM MAIN
 		T(:,nx) = 0
 	end if
 
+	Tn = T
 	!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -172,27 +177,6 @@ PROGRAM MAIN
 
 	! ! !-----------------------------------------------------------------------------------------------------!
 	! ! !-----------------------------------------------------------------------------------------------------!
-	! SOLVER OUTLINE
-		! outer loop: time stepping 
-			! solve for time step n+1 and while r<err
-				! conjugate gradient/jacobi/redback
-
-				! this will involve looping through temperature arrays
-				! end solve for timestep n+1
-
-				! update resduals
-			
-			! If statement check that t=somevalue
-			! WRITE TO ONE FILE 
-			
-		! end time stepping
-		
-		! Initialisation module
-		! Residual module
-		! Solver module - jacobi/red-black/Conjugate Gradient
-		! Call communication
-
-
 	!!!!!!!!!!!!!!!!!!!!!!!!!!! COMPUTATION !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	! ░▄▀▀▀▀▄░░▄▄
 	! █░░░░░░▀▀░░█░░░░░░▄░▄
@@ -242,15 +226,9 @@ PROGRAM MAIN
         CASE ("jac")
             ! Begin the solution loop
             do while ((time<t_final).and.(rc>res_max))
-            ! do while (time<0.05)
 
 				!-------------------------------------------------------------------!
-                ! Calculation of solution using only jacobi solver
-				! Keeping a constant boundary
-				do j = jl,jh
-            		T(1,j) = sin((pi*x(j))/Lx)
-				end do
-
+                ! Calculation of solution using only jacobi solver				
                 call jac(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
 
 				!-------------------------------------------------------------------!
@@ -312,21 +290,9 @@ PROGRAM MAIN
 				! Calculate Domain averaged residual for stopping critterion
 				rcurrent = SUM(SUM(ABS(resmat(resil:resih,resjl:resjh)),1),1) / ((resih-resil+1)*(resjh-resjl+1))
 
-                ! ! ! Combining all residuals on each processor and sending to processor 0
-                ! call MPI_REDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
-
-                ! if (pid == 0) then
-                !     rc = rc/nprocs
-                ! end if
-
-                ! call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
-
-
 				! Summing processor residuals to get global resiudal and broadcasting to get average
-				call MPI_ALLREDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,ierr)
+				call MPI_ALLREDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,COMM_TOPO,ierr)
 				rc = rc/nprocs
-
-
 				!-------------------------------------------------------------------!
 				! Printing to screen after a certain number of iterations
                 if (mod(iter,100).eq.0) then
@@ -372,14 +338,15 @@ PROGRAM MAIN
 						! Writing updated solution to file at each new iteration
 						write(file_name, "(A9,I5,A4)") "TecPlot2D",iter,".tec"
 						CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tfinal,  file_name )
+
+						write(*,*) '-----------------------------------------'
+						write(*,*) 'Time =', time
+						write(*,*) 'Iteration =', iter
+						write(*,*) 'Residual =', rc
+						write(*,*) 'Average Temperature =', sum(sum((Tfinal),1),1)/(nx*ny)
+						write(*,*) '-----------------------------------------'
 						
 					END IF
-
-					write(*,*) '-----------------------------------------'
-					write(*,*) 'Time =', time
-					write(*,*) 'Iteration =', iter
-					write(*,*) 'Residual =', rc
-					write(*,*) '-----------------------------------------'
 					
                 end if
 
@@ -428,7 +395,6 @@ PROGRAM MAIN
 
             ! Begin the solution loop
             do while ((time<t_final).and.(rc>res_max))
-            ! do while (time<t_final)
 
 				!-------------------------------------------------------------------!
                 ! calculation of red nodes
@@ -493,7 +459,7 @@ PROGRAM MAIN
 
 				!-------------------------------------------------------------------!
                 ! COMMUNICATION of black nodes
-                ! ------- RECEIVE FROM THE RIGHT/EAST, SEND TO THE RIGHT/EAST
+            	! ------- RECEIVE FROM THE RIGHT/EAST, SEND TO THE RIGHT/EAST
 				! Receive from the east1, and put it into the space for the ghost node on the east side
 				CALL MPI_IRECV( T(ind_low_east1:ind_high_east1, ind_high_x), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
 								east1, tag, COMM_TOPO, request_array(1), ierr)
@@ -550,15 +516,9 @@ PROGRAM MAIN
 				! Calculate Domain averaged residual for stopping critterion
 				rcurrent = SUM(SUM(ABS(resmat(resil:resih,resjl:resjh)),1),1) / ((resih-resil+1)*(resjh-resjl+1))
 
-                ! ! Combining all residuals on each processor and sending to processor 0
-                call MPI_REDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
-
-                if (pid == 0) then
-                    rc = rc/nprocs
-                end if
-
-                call MPI_BCAST(rc,1,MPI_DOUBLE_PRECISION,0,MPI_COMM_WORLD,ierr)
-
+				! Summing processor residuals to get global resiudal and broadcasting to get average
+				call MPI_ALLREDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,COMM_TOPO,ierr)
+				rc = rc/nprocs
 
 				!-------------------------------------------------------------------!
                 ! Printing to screen after a certain number of iterations
@@ -605,18 +565,15 @@ PROGRAM MAIN
 						! Writing updated solution to file at each new iteration
 						write(file_name, "(A9,I5,A4)") "TecPlot2D",iter,".tec"
 						CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tfinal,  file_name )
-
-						! Writing updated initial distribution to file
-						write(file_name, "(A17)") "TecPlot2Dinit.tec"
-						CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tinit,  file_name )
+					
+						write(*,*) '-----------------------------------------'
+						write(*,*) 'Time =', time
+						write(*,*) 'Iteration =', iter
+						write(*,*) 'Residual =', rc
+						write(*,*) 'Average Temperature =', sum(sum((Tfinal),1),1)/(nx*ny)
+						write(*,*) '-----------------------------------------'
 						
 					END IF
-
-					write(*,*) '-----------------------------------------'
-					write(*,*) 'Time =', time
-					write(*,*) 'Iteration =', iter
-					write(*,*) 'Residual =', rc
-					write(*,*) '-----------------------------------------'
 					
                 end if
 
@@ -638,6 +595,7 @@ PROGRAM MAIN
 
     END SELECT
 
+
 	if (pid.eq.0) then
 		write(*,*) 'Output after solver'
 		! write(*,1600) Tfinal
@@ -646,16 +604,20 @@ PROGRAM MAIN
 		write(*,*) 'Iteration =', iter
 		write(*,*) 'Residual =', rc
 		write(*,*) 'CFL =', CFL
-		! Checking what size the A matrix coefficients are
-		write(*,*) 'A matrix coefficients'
-		! write(*,*) an(1,1), as(1,1), ae(1,1), aw(1,1), ap(1,1)
-		write(*,*) 'an =', an(1,1)
-		write(*,*) 'as =', as(1,1)
-		write(*,*) 'ae =', ae(1,1)
-		write(*,*) 'aw =', aw(1,1)
-		write(*,*) 'ap =', ap(1,1)
-		write(*,*) 'b =', b(1,1)
+		t2 = MPI_WTIME()
+		write(*,*) 'Computational time =', t2-t1, 'seconds'
+		write(*,*) '-----------------------------------------'
+	! 	! Checking what size the A matrix coefficients are
+	! 	write(*,*) 'A matrix coefficients'
+	! 	! write(*,*) an(1,1), as(1,1), ae(1,1), aw(1,1), ap(1,1)
+	! 	write(*,*) 'an =', an(1,1)
+	! 	write(*,*) 'as =', as(1,1)
+	! 	write(*,*) 'ae =', ae(1,1)
+	! 	write(*,*) 'aw =', aw(1,1)
+	! 	write(*,*) 'ap =', ap(1,1)
+	! 	write(*,*) 'b =', b(1,1)
 	end if
+	! write(*,*) nx, ny
 	! write(*,*) pid,il,ih,jl,jh
 	! write(*,*) pid, resil,resih,resjl,resjh
 

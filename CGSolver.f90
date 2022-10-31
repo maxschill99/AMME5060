@@ -32,8 +32,8 @@ module cgradient
         subroutine CGSolve(an,as,ae,aw,ap,b,T)
 
         ! Initialising variables
-        Real(kind = 8), INTENT(IN) :: an(nx,ny), as(nx,ny), ae(nx,ny), aw(nx,ny), ap(nx,ny), b(nx,ny)
-        Real(kind = 8), INTENT(INOUT) :: T(nx,ny)
+        Real(kind = 8), INTENT(IN), dimension(il:ih,jl:jh) :: an, as, ae, aw, ap, b
+        Real(kind = 8), INTENT(INOUT) :: T(il:ih,jl:jh)
 
         Real(kind = 8), dimension(nx,ny) :: Minv, d, res, q, s, Tin, Tout
         Real(kind = 8) :: delta, delta_o, dp, alpha, beta
@@ -61,10 +61,6 @@ module cgradient
         ! Initialising q and s
         q(:,:) = 0
         s(:,:) = 0
-
-        ! Calling solution initialisations
-        ! Initialising - ae,aw,as,an,ap,T,x,y
-        ! call solninit(an,as,ae,aw,ap,b,T)
 
         ! initiliasing residuals
         call residcalc(aw,ae,an,as,ap,b,T,res)

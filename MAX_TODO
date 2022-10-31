@@ -16,6 +16,7 @@ fix residual using allreduce
 work on conjugate gradient stuff
 plot initial temp distribution
 test for longer time period/smaller residual
+need to update modules to remove redundancy
 
 Implement local indices
 Implement communication
@@ -41,6 +42,38 @@ TO DO:
 
 QUESTIONS
     Where does the communication occur in the conjugate gradient method
+
+
+
+	! if (pid .eq. 0) then
+	! 	write(*,*) pid, "before comms"
+	! 	call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
+	! end if
+	! if (pid .eq. 1) then
+	! 	write(*,*) pid, "before comms"
+	! 	call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
+	! end if
+	
+
+	! SOLVER OUTLINE
+		! outer loop: time stepping 
+			! solve for time step n+1 and while r<err
+				! conjugate gradient/jacobi/redback
+
+				! this will involve looping through temperature arrays
+				! end solve for timestep n+1
+
+				! update resduals
+			
+			! If statement check that t=somevalue
+			! WRITE TO ONE FILE 
+			
+		! end time stepping
+		
+		! Initialisation module
+		! Residual module
+		! Solver module - jacobi/red-black/Conjugate Gradient
+		! Call communication
 
 ! ! JUST DOING MY OWN TECPLOT FILE WRITING
     ! ! Creating a temp array to combine all processor data
