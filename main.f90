@@ -277,7 +277,7 @@ t1 = MPI_WTIME()
 
 				!-------------------------------------------------------------------!
 				! Printing to screen after a certain amount of time
-				if ((time-int(time))==0) then
+				if ((time-int(time))<dt) then
 
 					! TECPLOT
 
@@ -504,7 +504,7 @@ t1 = MPI_WTIME()
 
 				!-------------------------------------------------------------------!
 				! Printing to screen after a certain amount of time
-				if ((time-int(time))==0) then
+				if ((time-int(time))<dt) then
 					! TECPLOT
 
 					! --------------------------------------------------------------------------------------- 
@@ -604,6 +604,9 @@ t1 = MPI_WTIME()
 		! 	write(*,*) 'aw =', aw(1,1)
 		! 	write(*,*) 'ap =', ap(1,1)
 		! 	write(*,*) 'b =', b(1,1)
+
+		! write(*,*) pid, "matrix after solver"
+		! call printmatrix(Tfinal, SIZE(T, DIM=1), SIZE(T, DIM=2))
 	end if
 	! Outputting the domain indices
 	! write(*,*) nx, ny
