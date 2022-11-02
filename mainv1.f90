@@ -159,11 +159,11 @@ t1 = MPI_WTIME()
 	time = 0
 	iter = 0
 
-	if (pid==0) then
-		write(*,*) 'before solver'
-		call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
-		! Stop
-	end if
+	! if (pid==0) then
+	! 	write(*,*) 'before solver'
+	! 	call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
+	! 	! Stop
+	! end if
 
 	! ! !-----------------------------------------------------------------------------------------------------!
 	! ! !-----------------------------------------------------------------------------------------------------!
@@ -348,12 +348,10 @@ t1 = MPI_WTIME()
 
 						CALL MPI_WAITALL(Nprocs+1, request_array_gather, status_array_gather, ierr)
 
-						if (pid == 0) then
-							write(*,*) pid, "matrix after solver"
-							call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
-							call sleep(1)
-							! stop
-						end if
+						write(*,*) pid, "matrix after solver"
+						call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
+						call sleep(1)
+						! stop
 												
 						write(*,*) 'after solver'
 						call printmatrix(Tfinal, SIZE(Tfinal, DIM=1), SIZE(Tfinal, DIM=2))
@@ -672,8 +670,8 @@ t1 = MPI_WTIME()
 	end if
 	! Outputting the domain indices
 	! write(*,*) nx, ny
-	! write(*,*) pid,il,ih,jl,jh
-	! write(*,*) pid, resil,resih,resjl,resjh
+	write(*,*) pid,il,ih,jl,jh
+	write(*,*) pid, resil,resih,resjl,resjh
 
 
 	

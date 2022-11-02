@@ -1,7 +1,7 @@
 MPI = mpif90
 
 Prog: outputmod_MP.o varmod_MP.o nodemod_MP.o partitioning_MP.o residuals.o init.o jacobi.o main.o
-	$(MPI) outputmod_MP.f90 varmod_MP.f90 nodemod_MP.f90 partitioning_MP.f90 residuals.f90 init.f90 jacobi.f90 mainv1.f90 -o test1.exe
+	$(MPI) outputmod_MP.f90 varmod_MP.f90 nodemod_MP.f90 partitioning_MP.f90 residuals.f90 init.f90 jacobi.f90 main.f90 -o test1.exe
 
 main.o: outputmod_MP.o varmod_MP.o nodemod_MP.o partitioning_MP.o residuals.o init.o jacobi.o main.f90
 	$(MPI) -c main.f90
