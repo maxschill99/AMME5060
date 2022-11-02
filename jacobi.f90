@@ -33,17 +33,35 @@ module jacobi
         Real(kind=8), INTENT(INOUT) :: T(il:ih,jl:jh)
 
         Integer :: i,j
+        Real(kind = 8) :: C, F, hsq, k
+        Real(kind = 8), dimension(il:ih,jl:jh) :: bmat
+
+        C = ((dt*alpha)/dx**2)
+        F = 1 + 4*C
+        hsq = dx**2
+        k = dt
 
         do j = jl+1,jh-1
             do i = il+1,ih-1
+                ! EXPLICIT
                 ! UNSTEADY
-                Tn(i,j) = T(i+1,j)*an(i,j) + T(i-1,j)*as(i,j) + T(i,j+1)*ae(i,j) &
-                    + T(i,j-1)*aw(i,j) + T(i,j)*ap(i,j)
+                ! Tn(i,j) = T(i+1,j)*an(i,j) + T(i-1,j)*as(i,j) + T(i,j+1)*ae(i,j) &
+                !     + T(i,j-1)*aw(i,j) + T(i,j)*ap(i,j)
                 ! Tn(i,j) = T(i,j)*ap(i,j) + alpha*dt*((T(i,j+1)+T(i,j-1))/(dx**2)) + alpha*dt*((T(i+1,j)+T(i-1,j))/(dy**2))  
 
                 ! STEADY
                 ! Tn(i,j) = (alpha*((T(i,j+1)+T(i,j-1))/(dx**2)) & 
-                !             + alpha*((T(i+1,j)+T(i-1,j))/(dy**2)))/((2*alpha)/dx**2 + (2*alpha)/dy**2)       
+                !             + alpha*((T(i+1,j)+T(i-1,j))/(dy**2)))/((2*alpha)/dx**2 + (2*alpha)/dy**2)    
+
+                ! IMPLICIT
+                ! JACOBI
+                bmat(i,j) = T(i,j)/(1 + 4*C)
+                Tn(i,j) = bmat(i,j) + C*(Tn(i+1,j) + Tn(i-1,j) + Tn(i,j+1) + Tn(i,j-1))/(1 + 4*C)
+
+                ! CRANK NICHOLSON
+                ! bmat(i,j) = (1 - (2*alpha*k)/hsq)*T(i,j) + (alpha*k)/(2*hsq)*(T(i+1,j) + T(i-1,j) + T(i,j+1) + T(i,j-1))
+                ! Tn(i,j) = (bmat(i,j) + (alpha*k)/(2*hsq)*(Tn(i+1,j) + Tn(i-1,j) + Tn(i,j+1) + Tn(i,j-1)))/(1 + (2*alpha*k)/hsq)
+
             end do
         end do
 
@@ -66,9 +84,17 @@ module jacobi
         Real(kind=8), INTENT(INOUT) :: T(il:ih,jl:jh)
 
         Integer :: i,j
+        Real(kind = 8) :: C, F, hsq, k
+        Real(kind = 8), dimension(il:ih,jl:jh) :: bmat
+
+        C = ((dt*alpha)/dx**2)
+        F = 1 + 4*C
+        hsq = dx**2
+        k = dt
 
         do j = jl+1,jh-1
             do i = il+1 + mod(j,2),ih-1,2
+                ! EXPLICIT
                 ! UNSTEADY
                 Tn(i,j) = T(i+1,j)*an(i,j) + T(i-1,j)*as(i,j) + T(i,j+1)*ae(i,j) &
                     + T(i,j-1)*aw(i,j) + T(i,j)*ap(i,j)
@@ -76,6 +102,16 @@ module jacobi
                 ! ! STEADY
                 ! Tn(i,j) = (alpha*((T(i,j+1)+T(i,j-1))/(dx**2)) & 
                 !             + alpha*((T(i+1,j)+T(i-1,j))/(dy**2)))/((2*alpha)/dx**2 + (2*alpha)/dy**2) 
+
+                ! IMPLICIT
+                ! JACOBI
+                bmat(i,j) = T(i,j)/(1 + 4*C)
+                Tn(i,j) = bmat(i,j) + C*(Tn(i+1,j) + Tn(i-1,j) + Tn(i,j+1) + Tn(i,j-1))/(1 + 4*C)
+
+                ! CRANK NICHOLSON
+                ! bmat(i,j) = (1 - (2*alpha*k)/hsq)*T(i,j) + (alpha*k)/(2*hsq)*(T(i+1,j) + T(i-1,j) + T(i,j+1) + T(i,j-1))
+                ! Tn(i,j) = (bmat(i,j) + (alpha*k)/(2*hsq)*(Tn(i+1,j) + Tn(i-1,j) + Tn(i,j+1) + Tn(i,j-1)))/(1 + (2*alpha*k)/hsq)
+
             end do
         end do
 
@@ -92,9 +128,17 @@ module jacobi
         Real(kind=8), INTENT(INOUT) :: T(il:ih,jl:jh)
 
         Integer :: i,j
+        Real(kind = 8) :: C, F, hsq, k
+        Real(kind = 8), dimension(il:ih,jl:jh) :: bmat
+
+        C = ((dt*alpha)/dx**2)
+        F = 1 + 4*C
+        hsq = dx**2
+        k = dt
 
         do j = jl+1,jh-1
             do i = il+2 - mod(j,2),ih-1,2
+                ! EXPLICIT
                 ! UNSTEADY
                 Tn(i,j) = T(i+1,j)*an(i,j) + T(i-1,j)*as(i,j) + T(i,j+1)*ae(i,j) &
                     + T(i,j-1)*aw(i,j) + T(i,j)*ap(i,j)
@@ -102,6 +146,16 @@ module jacobi
                 ! ! STEADY
                 ! Tn(i,j) = (alpha*((T(i,j+1)+T(i,j-1))/(dx**2)) & 
                 !             + alpha*((T(i+1,j)+T(i-1,j))/(dy**2)))/((2*alpha)/dx**2 + (2*alpha)/dy**2) 
+
+                ! IMPLICIT
+                ! JACOBI
+                bmat(i,j) = T(i,j)/(1 + 4*C)
+                Tn(i,j) = bmat(i,j) + C*(Tn(i+1,j) + Tn(i-1,j) + Tn(i,j+1) + Tn(i,j-1))/(1 + 4*C)
+
+                ! CRANK NICHOLSON
+                ! bmat(i,j) = (1 - (2*alpha*k)/hsq)*T(i,j) + (alpha*k)/(2*hsq)*(T(i+1,j) + T(i-1,j) + T(i,j+1) + T(i,j-1))
+                ! Tn(i,j) = (bmat(i,j) + (alpha*k)/(2*hsq)*(Tn(i+1,j) + Tn(i-1,j) + Tn(i,j+1) + Tn(i,j-1)))/(1 + (2*alpha*k)/hsq)
+
             end do
         end do
 

@@ -83,11 +83,11 @@ MODULE variablemodule
 	
 	! CHANGE WHAT'S IN HERE, MARK
 	! ---------------------------------------------------------------------------------------------------
-		nx 		= 64				! Number of points in domain in x direction (evenly spaced)
-		ny 		= 64				! Number of points in domain in y direction (evenly spaced)
+		nx 		= 16				! Number of points in domain in x direction (evenly spaced)
+		ny 		= 16				! Number of points in domain in y direction (evenly spaced)
 		res_max = 1e-8					! Maximum residual value
 		dt		= 0.25 		! Time step size [s]
-		t_final = 20.				! [s] &&& just a guess for now - CHANGE TO WHATEVER'S APPROPRIATE
+		t_final = 5.				! [s] &&& just a guess for now - CHANGE TO WHATEVER'S APPROPRIATE
 	! ---------------------------------------------------------------------------------------------------	
 	
 		! Universal constants

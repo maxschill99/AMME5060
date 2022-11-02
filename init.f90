@@ -51,6 +51,13 @@ USE variablemodule
          ap(il:ih,jl:jh), b(il:ih,jl:jh), T(il:ih,jl:jh)
 
         Real(kind = 8), allocatable :: x(:), y(:)
+        ! Real(kind = 8), allocatable :: Tn(:,:)
+        Real(kind = 8) :: hsq, k
+
+        ! F = (dt*alpha)/dx**2
+        ! Tn(il:ih,jl:jh) = 1
+        hsq = dx**2
+        k = dt
 
 
         ! Computing A and B matrices - need matrices for conjugate gradient method
@@ -58,12 +65,28 @@ USE variablemodule
         do j = jl,jh
             ! do i = 1,nx
             do i = il,ih
+                ! EXPLICIT
                 ! simplifying variable notation
-                an(i,j) = (dt*alpha)/dy**2
-                as(i,j) = (dt*alpha)/dy**2
-                ae(i,j) = (dt*alpha)/dx**2
-                aw(i,j) = (dt*alpha)/dx**2
-                ap(i,j) = 1 - (2*dt*alpha)/dx**2 - (2*dt*alpha)/dy**2
+                ! an(i,j) = (dt*alpha)/dy**2
+                ! as(i,j) = (dt*alpha)/dy**2
+                ! ae(i,j) = (dt*alpha)/dx**2
+                ! aw(i,j) = (dt*alpha)/dx**2
+                ! ap(i,j) = 1 - (2*dt*alpha)/dx**2 - (2*dt*alpha)/dy**2
+                ! b(i,j) = 0
+
+                ! IMPLICIT
+                ! an(i,j) = ((dt*alpha)/dx**2)/(1 + (4*dt*alpha)/dx**2)
+                ! as(i,j) = an(i,j)
+                ! ae(i,j) = an(i,j)
+                ! aw(i,j) = an(i,j)
+                ! ! ap(i,j) = 1/(1 + (4*dt*alpha)/dx**2)
+                ! ap(i,j) = (F*(Tn(i+1,j) + Tn(i-1,j) + Tn(i,j+1) + Tn(i,j-1)))/(1 + 4*F)
+                ! b(i,j) = 0
+                ap(i,j) = 1 + (2*k)/hsq
+                an(i,j) = k/(2*hsq)
+                as(i,j) = k/(2*hsq)
+                ae(i,j) = k/(2*hsq)
+                aw(i,j) = k/(2*hsq)
                 b(i,j) = 0
             end do
         end do
