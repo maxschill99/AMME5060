@@ -670,8 +670,8 @@ t1 = MPI_WTIME()
 	end if
 	! Outputting the domain indices
 	! write(*,*) nx, ny
-	write(*,*) pid,il,ih,jl,jh
-	write(*,*) pid, resil,resih,resjl,resjh
+	! write(*,*) pid,il,ih,jl,jh
+	! write(*,*) pid, resil,resih,resjl,resjh
 
 
 	
