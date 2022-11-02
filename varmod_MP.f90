@@ -85,7 +85,7 @@ MODULE variablemodule
 	! ---------------------------------------------------------------------------------------------------
 		nx 		= 16				! Number of points in domain in x direction (evenly spaced)
 		ny 		= 16				! Number of points in domain in y direction (evenly spaced)
-		res_max = 1e-4					! Maximum residual value
+		res_max = 1e-8					! Maximum residual value
 		dt		= 0.25 		! Time step size [s]
 		t_final = 5.				! [s] &&& just a guess for now - CHANGE TO WHATEVER'S APPROPRIATE
 	! ---------------------------------------------------------------------------------------------------	

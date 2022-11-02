@@ -348,15 +348,15 @@ t1 = MPI_WTIME()
 
 						CALL MPI_WAITALL(Nprocs+1, request_array_gather, status_array_gather, ierr)
 
-						write(*,*) pid, "matrix after solver"
-						call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
-						call sleep(1)
-						! stop
+						! write(*,*) pid, "matrix after solver"
+						! call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
+						! call sleep(1)
+						! ! stop
 												
-						write(*,*) 'after solver'
-						call printmatrix(Tfinal, SIZE(Tfinal, DIM=1), SIZE(Tfinal, DIM=2))
-						! Stop
-						call sleep(1)
+						! write(*,*) 'after solver'
+						! call printmatrix(Tfinal, SIZE(Tfinal, DIM=1), SIZE(Tfinal, DIM=2))
+						! ! Stop
+						! call sleep(1)
 
 						! --- PUTTING INTO FILE ---
 						! x vector of whole domain (could have also done a mpi_gatherv)
