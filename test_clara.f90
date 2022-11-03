@@ -39,12 +39,12 @@ PROGRAM MAIN
 
 			! MPI_Graph_neighbors_count retrieves the number of neighbours for a given rank in the communicator
 			CALL MPI_GRAPH_NEIGHBORS_COUNT(COMM_TOPO, pid, neighbours_count, ierr)
-			WRITE(*,*) 'My pid is', pid, '. I have', neighbours_count, 'neighbours.'
+			! WRITE(*,*) 'My pid is', pid, '. I have', neighbours_count, 'neighbours.'
 			! MPI_Graph_neighbors - Returns the neighbors of a node associated with a graph topology.
 			
 			ALLOCATE( neighbours_array(neighbours_count) )
 			CALL MPI_GRAPH_NEIGHBORS(COMM_TOPO, pid, neighbours_count, neighbours_array, ierr)
-			write(*,*) 'i am pid', pid, 'my neighbours are', neighbours_array
+			! write(*,*) 'i am pid', pid, 'my neighbours are', neighbours_array
 			
 		CASE ("cart")
 		
@@ -100,14 +100,107 @@ PROGRAM MAIN
 		! call printmatrix(T, SIZE(T, DIM = 1), SIZE(T, DIM = 2))
 	! end if
 	
-	! if (pid .eq. 0) then
-		! write(*,*) "pid", pid, "What I am sending to east1, which is pid", east1
+	! IF (pid .eq. 2) then
+		! write(*,*) "pid 2"
+		! write(*,*) "nlx, nhx, nly, nhy", node_low_x, node_high_x, node_low_y, node_high_y
+		! write(*,*) "ilx, ihx, ily, ihy", ind_low_x, ind_high_x, ind_low_y, ind_high_y
+		! write(*,*) "sending E1 neighbour: ", east1
 		! write(*,*) "ind_low_east1, ind_high_east1, ind_high_x-1", ind_low_east1, ind_high_east1, ind_high_x-1
-		! write(*,*) "pid", pid, "What I am sending to east2, which is pid", east2
-		! write(*,*) "ind_low_east2, ind_high_east2, ind_high_x-1", ind_low_east2, ind_high_east2, ind_high_x-1		
-		! call printmatrix(T, SIZE(T, DIM = 1), SIZE(T, DIM = 2))
-	! end if
+		! write(*,*) "E2 neighbour", east2
+		! write(*,*) "ind_low_east2, ind_high_east2, ind_high_x-1", ind_low_east2, ind_high_east2, ind_high_x-1
+		! write(*,*) "sending W1 neighbour: ", west1
+		! write(*,*) "ind_low_west1, ind_high_west1, ind_low_x+1", ind_low_west1, ind_high_west1, ind_low_x+1
+		! write(*,*) "W2 neighbour", west2
+		! write(*,*) "ind_low_west2, ind_high_west2, ind_low_x+1", ind_low_west2, ind_high_west2, ind_low_x+1
 	
+	! end if 
+	
+	! call sleep(2)
+	
+	! IF (pid .eq. 0) then
+		! write(*,*) "pid 0"
+		! write(*,*) "nlx, nhx, nly, nhy", node_low_x, node_high_x, node_low_y, node_high_y
+		! write(*,*) "ilx, ihx, ily, ihy", ind_low_x, ind_high_x, ind_low_y, ind_high_y
+		! write(*,*) "sending E1 neighbour: ", east1
+		! write(*,*) "ind_low_east1, ind_high_east1, ind_high_x-1", ind_low_east1, ind_high_east1, ind_high_x-1
+		! write(*,*) "E2 neighbour", east2
+		! write(*,*) "ind_low_east2, ind_high_east2, ind_high_x-1", ind_low_east2, ind_high_east2, ind_high_x-1
+		! write(*,*) "sending W1 neighbour: ", west1
+		! write(*,*) "ind_low_west1, ind_high_west1, ind_low_x+1", ind_low_west1, ind_high_west1, ind_low_x+1
+		! write(*,*) "W2 neighbour", west2
+		! write(*,*) "ind_low_west2, ind_high_west2, ind_low_x+1", ind_low_west2, ind_high_west2, ind_low_x+1
+	
+	! end if 
+	
+	! call sleep(2)
+	
+	! ! IF (pid .eq. 0) then
+		! ! write(*,*) "pid 0"
+		! ! write(*,*) "nlx, nhx, nly, nhy", node_low_x, node_high_x, node_low_y, node_high_y
+		! ! write(*,*) "ilx, ihx, ily, ihy", ind_low_x, ind_high_x, ind_low_y, ind_high_y
+		! ! write(*,*) " E1 neighbour: ", east1
+		! ! write(*,*) "ind_low_east1, ind_high_east1, ind_high_x-1", ind_low_east1, ind_high_east1, ind_high_x-1
+		! ! write(*,*) "receving from E2 neighbour (should be 3)", east2
+		! ! write(*,*) "ind_low_east2, ind_high_east2, ind_high_x", ind_low_east2, ind_high_east2, ind_high_x
+		! ! ! write(*,*) "ind_low_east2, ind_high_east2, ind_high_x-1", ind_low_east2, ind_high_east2, ind_high_x-1
+		! ! ! write(*,*) "sending W1 neighbour: ", west1
+		! ! ! write(*,*) "ind_low_west1, ind_high_west1, ind_low_x+1", ind_low_west1, ind_high_west1, ind_low_x+1
+		! ! ! write(*,*) "W2 neighbour", west2
+		! ! ! write(*,*) "ind_low_west2, ind_high_west2, ind_low_x+1", ind_low_west2, ind_high_west2, ind_low_x+1
+	! ! end if 
+	
+	! IF (pid .eq. 4) then
+		! write(*,*) "pid 4"
+		! write(*,*) "nlx, nhx, nly, nhy", node_low_x, node_high_x, node_low_y, node_high_y
+		! write(*,*) "ilx, ihx, ily, ihy", ind_low_x, ind_high_x, ind_low_y, ind_high_y
+		! write(*,*) "sending E1 neighbour: ", east1
+		! write(*,*) "ind_low_east1, ind_high_east1, ind_high_x-1", ind_low_east1, ind_high_east1, ind_high_x-1
+		! write(*,*) "E2 neighbour", east2
+		! write(*,*) "ind_low_east2, ind_high_east2, ind_high_x-1", ind_low_east2, ind_high_east2, ind_high_x-1
+		! write(*,*) "sending W1 neighbour: ", west1
+		! write(*,*) "ind_low_west1, ind_high_west1, ind_low_x+1", ind_low_west1, ind_high_west1, ind_low_x+1
+		! write(*,*) "W2 neighbour", west2
+		! write(*,*) "ind_low_west2, ind_high_west2, ind_low_x+1", ind_low_west2, ind_high_west2, ind_low_x+1
+	! end if 
+	
+	! call sleep(2)
+	
+
+	! IF (pid .eq. 3) then
+		! write(*,*) "pid 3"
+		! write(*,*) "nlx, nhx, nly, nhy", node_low_x, node_high_x, node_low_y, node_high_y
+		! write(*,*) "ilx, ihx, ily, ihy", ind_low_x, ind_high_x, ind_low_y, ind_high_y
+		! write(*,*) "sending E1 neighbour: ", east1
+		! write(*,*) "ind_low_east1, ind_high_east1, ind_high_x-1", ind_low_east1, ind_high_east1, ind_high_x-1
+		! write(*,*) "E2 neighbour", east2
+		! write(*,*) "ind_low_east2, ind_high_east2, ind_high_x-1", ind_low_east2, ind_high_east2, ind_high_x-1
+		! ! write(*,*) "sending W1 neighbour: ", west1
+		! ! write(*,*) "ind_low_west1, ind_high_west1, ind_low_x+1", ind_low_west1, ind_high_west1, ind_low_x+1
+		! ! write(*,*) "W2 neighbour", west2
+		! ! write(*,*) "ind_low_west2, ind_high_west2, ind_low_x+1", ind_low_west2, ind_high_west2, ind_low_x+1
+	
+	! end if 
+	
+	! call sleep(2)
+	
+	! IF (pid .eq. 6) then
+		! write(*,*) "pid 6"
+		! write(*,*) "nlx, nhx, nly, nhy", node_low_x, node_high_x, node_low_y, node_high_y
+		! write(*,*) "ilx, ihx, ily, ihy", ind_low_x, ind_high_x, ind_low_y, ind_high_y
+		! write(*,*) "sending E1 neighbour: ", east1
+		! write(*,*) "ind_low_east1, ind_high_east1, ind_high_x-1", ind_low_east1, ind_high_east1, ind_high_x-1
+		! write(*,*) "E2 neighbour", east2
+		! write(*,*) "ind_low_east2, ind_high_east2, ind_high_x-1", ind_low_east2, ind_high_east2, ind_high_x-1
+		! write(*,*) "sending W1 neighbour: ", west1
+		! write(*,*) "ind_low_west1, ind_high_west1, ind_low_x+1", ind_low_west1, ind_high_west1, ind_low_x+1
+		! write(*,*) "W2 neighbour", west2
+		! write(*,*) "ind_low_west2, ind_high_west2, ind_low_x+1", ind_low_west2, ind_high_west2, ind_low_x+1
+	
+	! end if 
+	
+	! call sleep(2)
+	
+	! stop
 	
 	ALLOCATE( status_array(MPI_STATUS_SIZE, 12) )
 	ALLOCATE( request_array(12) )
@@ -162,7 +255,7 @@ PROGRAM MAIN
 	! Wait for data sends to complete before black points start referencing red points
 	CALL MPI_WAITALL(12, request_array, status_array, ierr)
 
-	if (pid .eq. 1) then
+	if (pid .eq. 3) then
 		write(*,*) "pid", pid, "After send/recv"
 		call printmatrix(T, SIZE(T, DIM = 1), SIZE(T, DIM = 2))
 	end if
@@ -172,7 +265,9 @@ PROGRAM MAIN
 	!────█░░█░░░░░█░░█────
 	!─▄▄──█░░░▀█▀░░░█──▄▄─
 	!█░░█─▀▄░░░░░░░▄▀─█░░█
+	
 
+	
 	! ! *************************************************
 	! ! --- Collating Final Temperature Arrays ---
 

@@ -181,9 +181,9 @@ MODULE partitionmodule
 				! Adding to indexes array needed to define the graph topology communicator later
 				indexes(alloc_pid+1) = cumulative_neighbours
 				
-				IF (pid .EQ. alloc_pid) THEN
-					WRITE(*,*) "i am pid", pid, north, south, east1, east2, west1, west2
-				end if
+				! IF (pid .EQ. alloc_pid) THEN
+					! WRITE(*,*) "i am pid", pid, north, south, east1, east2, west1, west2
+				! end if
 
 			END DO
 		END DO
@@ -209,14 +209,20 @@ MODULE partitionmodule
 			rem_2 = MOD(rem, r+s) ! remainder dividing spare points by number of columns across whole domain (r columns in zone A, s columns in zone B)
 			
 			! Extra points given to each zone, with any final spare points just given to zone A
-			gift_to_zone_A = FLOOR( rem/( DBLE(r)+DBLE(s) ) )*r + rem_2
-			gift_to_zone_B = FLOOR( rem/( DBLE(r)+DBLE(s) ) )*s
+			IF (r .EQ. 0) then ! (Zone A doesnt exist, give extra point to zone B)
+				gift_to_zone_A = FLOOR( rem/( DBLE(r)+DBLE(s) ) )*r 
+				gift_to_zone_B = FLOOR( rem/( DBLE(r)+DBLE(s) ) )*s + rem_2
+			ELSE
+				gift_to_zone_A = FLOOR( rem/( DBLE(r)+DBLE(s) ) )*r + rem_2
+				gift_to_zone_B = FLOOR( rem/( DBLE(r)+DBLE(s) ) )*s
+			END IF
 			
 			! Number of points in x in zones A and B
 			nx_zA = (nx-rem) * r *     n/p + gift_to_zone_A
 			nx_zB = (nx-rem) * s * (n+1)/p + gift_to_zone_B
 			
 		END IF
+		
 		
 		! With the number of points in x for both zones known, now each processor can use their knowledge of what column they are in
 		! to figure out what nodes in the domain they will be considering
@@ -295,7 +301,7 @@ MODULE partitionmodule
 		
 		! ------------------- WEST 1 DIRECTION
 		ind_low_west1 = ind_low_y + 1	
-		IF ( (zone .EQ. 1) .AND. (zone_row .GT. 0) .AND. (zone_row .NE. n) ) THEN 
+		IF ( (zone .EQ. 1) .AND. (zone_row .GT. 0) .AND. (zone_row .NE. n) .AND. (zone_col .EQ. 0) .AND. (r .NE. 0)) THEN 
 			! Sending y value based on y-span of the (longer) west1 neighbour in zone A.
 			! west1 neighbour has zone_row-1.
 			CALL get_nodes(ny, n, zone_row-1, ignore_val, ind_high_west1)
