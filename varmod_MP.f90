@@ -50,7 +50,7 @@ MODULE variablemodule
 
     ! Solution solver variables
     Real(kind = 8) :: rcurrent, rc, time
-    Real(kind = 8), allocatable :: Told(:,:), Tn(:,:), resmat(:,:)
+    Real(kind = 8), allocatable :: Told(:,:), Tdold(:,:), Tn(:,:), resmat(:,:)
 
     ! Gathering variables for final solution
     Real(kind = 8), allocatable :: Ttemp(:,:), Ttot(:,:), Tinit(:,:), Tinittot(:,:)
@@ -83,11 +83,11 @@ MODULE variablemodule
 	
 	! CHANGE WHAT'S IN HERE, MARK
 	! ---------------------------------------------------------------------------------------------------
-		nx 		= 16				! Number of points in domain in x direction (evenly spaced)
-		ny 		= 16				! Number of points in domain in y direction (evenly spaced)
+		nx 		= 128				! Number of points in domain in x direction (evenly spaced)
+		ny 		= 128			! Number of points in domain in y direction (evenly spaced)
 		res_max = 1e-8					! Maximum residual value
-		dt		= 0.25 		! Time step size [s]
-		t_final = 5.				! [s] &&& just a guess for now - CHANGE TO WHATEVER'S APPROPRIATE
+		dt		= 0.025		! Time step size [s]
+		t_final = 10000.				! [s] &&& just a guess for now - CHANGE TO WHATEVER'S APPROPRIATE
 	! ---------------------------------------------------------------------------------------------------	
 	
 		! Universal constants

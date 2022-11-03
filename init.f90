@@ -105,14 +105,10 @@ USE variablemodule
         ! Initialising temperature matrix
         T(:,:) = 0.0
 
-        ! allocate(x(jl:jh))
-        ! do j = jl,jh
-        !     x(j) = (j-1)*dx
-        ! end do
-
+        PI=4.D0*DATAN(1.D0)
         ! Setting solver boundary conditions
         do j = jl,jh
-            T(1,j) = sin((pi*x(j))/Lx)
+            T(1,j) = sin(((pi*(j-1)*dx)/Lx))
         end do
 
         ! Edge boundary conditions

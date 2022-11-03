@@ -1,3 +1,13 @@
+% URGENT
+Clean up code
+Testing 
+Conjugate Gradient
+
+
+
+
+
+
 get seperate subroutines working
 try mlevel for special case
 
@@ -1059,3 +1069,96 @@ subroutine printmatrix(b,n,m)
 	real (kind=8)::b(n,m) !n = # rows, m = # columns
 	do i=1,n; print '(20f6.2)',b(i,1:m); enddo
 endsubroutine
+
+
+
+
+JACOBI stuff
+
+                ! EXPLICIT
+                ! UNSTEADY
+                ! Tn(i,j) = T(i+1,j)*an(i,j) + T(i-1,j)*as(i,j) + T(i,j+1)*ae(i,j) &
+                !     + T(i,j-1)*aw(i,j) + T(i,j)*ap(i,j)
+                ! Tn(i,j) = T(i,j)*ap(i,j) + alpha*dt*((T(i,j+1)+T(i,j-1))/(dx**2)) + alpha*dt*((T(i+1,j)+T(i-1,j))/(dy**2))  
+
+                ! STEADY
+                ! Tn(i,j) = (alpha*((T(i,j+1)+T(i,j-1))/(dx**2)) & 
+                !             + alpha*((T(i+1,j)+T(i-1,j))/(dy**2)))/((2*alpha)/dx**2 + (2*alpha)/dy**2)    
+
+                ! IMPLICIT
+                ! JACOBI
+                ! bmat(i,j) = T(i,j)/C
+                ! bmat(i,j) = (T(i,j)*dx*dx)/(dx*dx + 4*dt*alpha)
+
+                ! bmat(i,j) = T(i,j)/(1D0 + 4D0*C)
+                ! Tn(i,j) = bmat(i,j) + F*(Tn(i+1,j) + Tn(i-1,j) + Tn(i,j+1) + Tn(i,j-1))
+
+                ! Tn(i,j) = (1- (4*dt*alpha)/(dx*dx))*T(i,j) + ((dt*alpha)/(dx*dx))*(Tn(i+1,j) + Tn(i-1,j) + Tn(i,j+1) + Tn(i,j-1))
+
+
+				       ! CRANK NICHOLSON
+                ! bmat(i,j) = (1 - (2*alpha*k)/hsq)*T(i,j) + (alpha*k)/(2*hsq)*(T(i+1,j) + T(i-1,j) + T(i,j+1) + T(i,j-1))
+                ! Tn(i,j) = (bmat(i,j) + (alpha*k)/(2*hsq)*(Tn(i+1,j) + Tn(i-1,j) + Tn(i,j+1) + Tn(i,j-1)))/(1 + (2*alpha*k)/hsq)
+
+
+
+Real(kind = 8) :: C, F, hsq, k
+        Real(kind = 8), dimension(il:ih,jl:jh) :: bmat, Temp
+
+        bmat(:,:) = 0_8
+
+        C = ((dt*alpha)/(dx*dx))
+        ! F = C/(1D0 + 4D0*C)
+        F = (dt*alpha)/(dx*dx + 4*dt*alpha)
+        ! hsq = dx**2
+        ! k = dt
+
+        ! write(*,*) rc, C, F
+
+                	! if (pid==0) then
+					! 	write(*,*) rc, 'during jac'
+					! 	call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
+					! 	! Stop
+                    !     call sleep(1)
+					! end if
+
+					! if (pid==1) then
+					! 	write(*,*) rc, pid, 'during jac'
+					! 	call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
+					! 	! Stop
+                    !     call sleep(1)
+					! end if
+
+                    ! if (pid==0) then
+					! 	write(*,*) rc, pid, 'during jac Tn'
+					! 	call printmatrix(Tn, SIZE(T, DIM=1), SIZE(T, DIM=2))
+					! 	! Stop
+                    !     call sleep(1)
+					! end if
+
+
+        			! if (pid==0) then
+					! 	write(*,*) rc, 'b matrix'
+					! 	call printmatrix(bmat, SIZE(T, DIM=1), SIZE(T, DIM=2))
+					! 	! Stop
+                    !     call sleep(1)
+					! end if
+
+					! if (pid==1) then
+					! 	write(*,*) rc, pid, 'b matrix'
+					! 	call printmatrix(bmat, SIZE(T, DIM=1), SIZE(T, DIM=2))
+					! 	! Stop
+                    !     call sleep(1)
+					! end if
+
+
+
+											! write(*,*) pid, "matrix after solver"
+						! call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
+						! call sleep(1)
+						! stop
+												
+						! write(*,*) 'after solver'
+						! call printmatrix(Tfinal, SIZE(Tfinal, DIM=1), SIZE(Tfinal, DIM=2))
+						! ! Stop
+						! call sleep(1)

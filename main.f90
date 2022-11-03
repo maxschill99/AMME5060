@@ -165,6 +165,12 @@ t1 = MPI_WTIME()
 	! 	! Stop
 	! end if
 
+	! if (pid==1) then
+	! 	write(*,*) pid, 'before solver'
+	! 	call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
+	! 	Stop
+	! end if
+
 	! ! !-----------------------------------------------------------------------------------------------------!
 	! ! !-----------------------------------------------------------------------------------------------------!
 	!!!!!!!!!!!!!!!!!!!!!!!!!!! COMPUTATION !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -208,113 +214,92 @@ t1 = MPI_WTIME()
 		! Start column location in the final matrix (minus 1 because start location starts at zero)
 		CALL MPI_GATHER( node_low_x-1, 	 1, MPI_INTEGER, subarray_col_start,  1, MPI_INTEGER, 0, COMM_TOPO, ierr )
 			
+					! if (pid==0) then
+					! 	write(*,*) 'BEOFRE JAC'
+					! 	call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
+					! 	! Stop
+					! end if
+
 	! SOLVING
     SELECT CASE (solvertype)
 
         ! jacobi solver
         CASE ("jac")
             ! Begin the solution loop
-            do while (time<t_final)
+			! do while (rc>res_max)
+			do while ((rc>res_max).and.(time<t_final))
+				!-------------------------------------------------------------------!
+				Told = T
 
-				rc = 1
+				! Calculation of solution using only jacobi solver				
+				call jac(an,as,ae,aw,ap,b,T,Told,il,ih,jl,jh)
 
-                do while (rc>res_max)
-                    !-------------------------------------------------------------------!
-                    ! Calculation of solution using only jacobi solver				
-                    call jac(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
-
-                    !-------------------------------------------------------------------!
-                    ! COMMUNICATION				
-                    ! ------- RECEIVE FROM THE RIGHT/EAST, SEND TO THE RIGHT/EAST
-                    ! Receive from the east1, and put it into the space for the ghost node on the east side
-                    CALL MPI_IRECV( T(ind_low_east1:ind_high_east1, ind_high_x), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
-                                    east1, tag, COMM_TOPO, request_array(1), ierr)
-                    ! Send to the east1
-                    CALL MPI_ISEND( T(ind_low_east1:ind_high_east1, ind_high_x-1), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
-                                    east1, tag, COMM_TOPO, request_array(2), ierr)
-                                    
-                    ! Receive from the east2, and put it into the space for the ghost node on the east side
-                    CALL MPI_IRECV( T(ind_low_east2:ind_high_east2, ind_high_x), ncalcpoints_y_east2, MPI_DOUBLE_PRECISION, &
-                                    east2, tag, COMM_TOPO, request_array(3), ierr)
-                    ! Send to the east2
-                    CALL MPI_ISEND( T(ind_low_east2:ind_high_east2, ind_high_x-1), ncalcpoints_y_east2, MPI_DOUBLE_PRECISION, &
-                                    east2, tag, COMM_TOPO, request_array(4), ierr)
-
-
-                    ! ------- RECEIVE FROM THE LEFT/WEST, SEND TO THE LEFT/WEST
-                    ! Receive from the west1, put it into the space for the ghost node on the west side 
-                    CALL MPI_IRECV( T(ind_low_west1:ind_high_west1, ind_low_x), ncalcpoints_y_west1, MPI_DOUBLE_PRECISION, & 
-                                    west1, tag, COMM_TOPO, request_array(5), ierr)
-                    ! Send to the west1
-                    CALL MPI_ISEND( T(ind_low_west1:ind_high_west1, ind_low_x+1), ncalcpoints_y_west1, MPI_DOUBLE_PRECISION, &
-                                    west1, tag, COMM_TOPO, request_array(6), ierr)
-                                    
-                    ! Receive from the west2, put it into the space for the ghost node on the west side 
-                    CALL MPI_IRECV( T(ind_low_west2:ind_high_west2, ind_low_x), ncalcpoints_y_west2, MPI_DOUBLE_PRECISION, & 
-                                    west2, tag, COMM_TOPO, request_array(7), ierr)
-                    ! Send to the west2
-                    CALL MPI_ISEND( T(ind_low_west2:ind_high_west2, ind_low_x+1), ncalcpoints_y_west2, MPI_DOUBLE_PRECISION, &
-                                    west2, tag, COMM_TOPO, request_array(8), ierr)
-                                    
-                    ! ------- RECEIVE FROM THE NORTH, SEND TO THE NORTH
-                    ! Receive from the north, put it into the space for the ghost node 
-                    CALL MPI_IRECV( T(ind_low_y, ind_low_x+1), 1, NS_ROW_SENDRECV, &
-                                    north, tag, COMM_TOPO, request_array(9), ierr)
-                    ! Send to the north
-                    CALL MPI_ISEND( T(ind_low_y+1, ind_low_x+1), 1, NS_ROW_SENDRECV, &
-                                    north, tag, COMM_TOPO, request_array(10), ierr)
-                    ! ------- RECEIVE FROM THE SOUTH, SEND TO THE SOUTH
-                    ! Receive from the south, put it into the space for the ghost node 
-                    CALL MPI_IRECV( T(ind_high_y, ind_low_x+1), 1, NS_ROW_SENDRECV, &
-                                    south, tag, COMM_TOPO, request_array(11), ierr)
-                    ! Send to the south
-                    CALL MPI_ISEND( T(ind_high_y-1, ind_low_x+1), 1, NS_ROW_SENDRECV, &
-                                    south, tag, COMM_TOPO, request_array(12), ierr)
-
-                    ! Wait for data sends to complete before black points start referencing red points
-                    CALL MPI_WAITALL(12, request_array, status_array, ierr)
+				!-------------------------------------------------------------------!
+				! COMMUNICATION				
+				! ------- RECEIVE FROM THE RIGHT/EAST, SEND TO THE RIGHT/EAST
+				! Receive from the east1, and put it into the space for the ghost node on the east side
+				CALL MPI_IRECV( T(ind_low_east1:ind_high_east1, ind_high_x), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
+								east1, tag, COMM_TOPO, request_array(1), ierr)
+				! Send to the east1
+				CALL MPI_ISEND( T(ind_low_east1:ind_high_east1, ind_high_x-1), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
+								east1, tag, COMM_TOPO, request_array(2), ierr)
+								
+				! Receive from the east2, and put it into the space for the ghost node on the east side
+				CALL MPI_IRECV( T(ind_low_east2:ind_high_east2, ind_high_x), ncalcpoints_y_east2, MPI_DOUBLE_PRECISION, &
+								east2, tag, COMM_TOPO, request_array(3), ierr)
+				! Send to the east2
+				CALL MPI_ISEND( T(ind_low_east2:ind_high_east2, ind_high_x-1), ncalcpoints_y_east2, MPI_DOUBLE_PRECISION, &
+								east2, tag, COMM_TOPO, request_array(4), ierr)
 
 
-					! if (pid == 1) then
-					! 	write(*,*) 'pid 1 after solver'
-					! 	call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
-					! 	! Stop
-					! 	call sleep(1)
-					! end if
+				! ------- RECEIVE FROM THE LEFT/WEST, SEND TO THE LEFT/WEST
+				! Receive from the west1, put it into the space for the ghost node on the west side 
+				CALL MPI_IRECV( T(ind_low_west1:ind_high_west1, ind_low_x), ncalcpoints_y_west1, MPI_DOUBLE_PRECISION, & 
+								west1, tag, COMM_TOPO, request_array(5), ierr)
+				! Send to the west1
+				CALL MPI_ISEND( T(ind_low_west1:ind_high_west1, ind_low_x+1), ncalcpoints_y_west1, MPI_DOUBLE_PRECISION, &
+								west1, tag, COMM_TOPO, request_array(6), ierr)
+								
+				! Receive from the west2, put it into the space for the ghost node on the west side 
+				CALL MPI_IRECV( T(ind_low_west2:ind_high_west2, ind_low_x), ncalcpoints_y_west2, MPI_DOUBLE_PRECISION, & 
+								west2, tag, COMM_TOPO, request_array(7), ierr)
+				! Send to the west2
+				CALL MPI_ISEND( T(ind_low_west2:ind_high_west2, ind_low_x+1), ncalcpoints_y_west2, MPI_DOUBLE_PRECISION, &
+								west2, tag, COMM_TOPO, request_array(8), ierr)
+								
+				! ------- RECEIVE FROM THE NORTH, SEND TO THE NORTH
+				! Receive from the north, put it into the space for the ghost node 
+				CALL MPI_IRECV( T(ind_low_y, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								north, tag, COMM_TOPO, request_array(9), ierr)
+				! Send to the north
+				CALL MPI_ISEND( T(ind_low_y+1, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								north, tag, COMM_TOPO, request_array(10), ierr)
+				! ------- RECEIVE FROM THE SOUTH, SEND TO THE SOUTH
+				! Receive from the south, put it into the space for the ghost node 
+				CALL MPI_IRECV( T(ind_high_y, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								south, tag, COMM_TOPO, request_array(11), ierr)
+				! Send to the south
+				CALL MPI_ISEND( T(ind_high_y-1, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								south, tag, COMM_TOPO, request_array(12), ierr)
 
-					! if (pid == 0) then
-					! 	write(*,*) pid, "matrix after solver"
-					! 	call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
-					! 	call sleep(1)
-					! 	! stop
-					! end if
+				! Wait for data sends to complete before black points start referencing red points
+				CALL MPI_WAITALL(12, request_array, status_array, ierr)
 
-                    !-------------------------------------------------------------------!
-                    ! RESIDUALS
-                    ! computing residuals
+				!-------------------------------------------------------------------!
+				! RESIDUALS
+				! computing residuals
+				rcurrent = SUM(sum(ABS(Told(resil:resih,resjl:resjh) - T(resil:resih,resjl:resjh)),1),1) &
+									/ ((resih-resil+1)*(resjh-resjl+1))
 
-                    ! call respar(aw,ae,an,as,ap,b,T,resil,resih,resjl,resjh,resmat)
-                    rcurrent = SUM(sum(ABS(Told(resil:resih,resjl:resjh) - T(resil:resih,resjl:resjh)),1),1) &
-                                     / ((resih-resil+1)*(resjh-resjl+1))
-
-                    ! Calculate Domain averaged residual for stopping critterion
-                    ! rcurrent = SUM(SUM(ABS(resmat(resil:resih,resjl:resjh)),1),1) / ((resih-resil+1)*(resjh-resjl+1))
-
-
-                    ! Summing processor residuals to get global resiudal and broadcasting to get average
-                    call MPI_ALLREDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,COMM_TOPO,ierr)
-                    rc = rc/nprocs
-					
-					! write(*,*) rc
-					! call sleep(1)
-
-					Told = T
-
-                end do
+				! Summing processor residuals to get global resiudal and broadcasting to get average
+				call MPI_ALLREDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,COMM_TOPO,ierr)
+				rc = rc/nprocs
 
 				!-------------------------------------------------------------------!
 				! Printing to screen after a certain amount of time
-				if ((time-int(time))<dt) then
+				! if ((time-int(time))<dt) then
+				! if (MOD(int(time-int(time)),250)) then
+				if ((MOD(iter,1000).eq.0)) then
 
 					! TECPLOT
 
@@ -348,16 +333,6 @@ t1 = MPI_WTIME()
 
 						CALL MPI_WAITALL(Nprocs+1, request_array_gather, status_array_gather, ierr)
 
-						! write(*,*) pid, "matrix after solver"
-						! call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
-						! call sleep(1)
-						! ! stop
-												
-						! write(*,*) 'after solver'
-						! call printmatrix(Tfinal, SIZE(Tfinal, DIM=1), SIZE(Tfinal, DIM=2))
-						! ! Stop
-						! call sleep(1)
-
 						! --- PUTTING INTO FILE ---
 						! x vector of whole domain (could have also done a mpi_gatherv)
 						xtot 	= 0. + dx * [(i, i=0,(nx-1))] ! Implied DO loop used
@@ -377,14 +352,14 @@ t1 = MPI_WTIME()
 						
 					END IF
 					
-                end if
+				end if
 
 				!-------------------------------------------------------------------!
-                ! updating counter
-                time = time + dt
-                iter = iter + 1
+				! updating counter
+				time = time + dt
+				iter = iter + 1
 
-            end do
+			end do
 
 
 ! 			 ;               ,           
@@ -423,148 +398,136 @@ t1 = MPI_WTIME()
         CASE ("redblack")
 
             ! Begin the solution loop
-            do while (time<t_final)
+			do while ((rc>res_max).and.(time<t_final))
+				!-------------------------------------------------------------------!
+				Told = T
 
-				rc = 1
+				! calculation of red nodes
+				call rednodes(an,as,ae,aw,ap,b,T,Told,il,ih,jl,jh)
 
-                do while (rc>res_max)
-					!-------------------------------------------------------------------!
-					! calculation of red nodes
-					call rednodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
-
-					!-------------------------------------------------------------------!
-					! COMMUNICATION of red nodes			
-					! ------- RECEIVE FROM THE RIGHT/EAST, SEND TO THE RIGHT/EAST
-					! Receive from the east1, and put it into the space for the ghost node on the east side
-					CALL MPI_IRECV( T(ind_low_east1:ind_high_east1, ind_high_x), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
-									east1, tag, COMM_TOPO, request_array(1), ierr)
-					! Send to the east1
-					CALL MPI_ISEND( T(ind_low_east1:ind_high_east1, ind_high_x-1), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
-									east1, tag, COMM_TOPO, request_array(2), ierr)
-									
-					! Receive from the east2, and put it into the space for the ghost node on the east side
-					CALL MPI_IRECV( T(ind_low_east2:ind_high_east2, ind_high_x), ncalcpoints_y_east2, MPI_DOUBLE_PRECISION, &
-									east2, tag, COMM_TOPO, request_array(3), ierr)
-					! Send to the east2
-					CALL MPI_ISEND( T(ind_low_east2:ind_high_east2, ind_high_x-1), ncalcpoints_y_east2, MPI_DOUBLE_PRECISION, &
-									east2, tag, COMM_TOPO, request_array(4), ierr)
+				!-------------------------------------------------------------------!
+				! COMMUNICATION of red nodes			
+				! ------- RECEIVE FROM THE RIGHT/EAST, SEND TO THE RIGHT/EAST
+				! Receive from the east1, and put it into the space for the ghost node on the east side
+				CALL MPI_IRECV( T(ind_low_east1:ind_high_east1, ind_high_x), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
+								east1, tag, COMM_TOPO, request_array(1), ierr)
+				! Send to the east1
+				CALL MPI_ISEND( T(ind_low_east1:ind_high_east1, ind_high_x-1), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
+								east1, tag, COMM_TOPO, request_array(2), ierr)
+								
+				! Receive from the east2, and put it into the space for the ghost node on the east side
+				CALL MPI_IRECV( T(ind_low_east2:ind_high_east2, ind_high_x), ncalcpoints_y_east2, MPI_DOUBLE_PRECISION, &
+								east2, tag, COMM_TOPO, request_array(3), ierr)
+				! Send to the east2
+				CALL MPI_ISEND( T(ind_low_east2:ind_high_east2, ind_high_x-1), ncalcpoints_y_east2, MPI_DOUBLE_PRECISION, &
+								east2, tag, COMM_TOPO, request_array(4), ierr)
 
 
-					! ------- RECEIVE FROM THE LEFT/WEST, SEND TO THE LEFT/WEST
-					! Receive from the west1, put it into the space for the ghost node on the west side 
-					CALL MPI_IRECV( T(ind_low_west1:ind_high_west1, ind_low_x), ncalcpoints_y_west1, MPI_DOUBLE_PRECISION, & 
-									west1, tag, COMM_TOPO, request_array(5), ierr)
-					! Send to the west1
-					CALL MPI_ISEND( T(ind_low_west1:ind_high_west1, ind_low_x+1), ncalcpoints_y_west1, MPI_DOUBLE_PRECISION, &
-									west1, tag, COMM_TOPO, request_array(6), ierr)
-									
-					! Receive from the west2, put it into the space for the ghost node on the west side 
-					CALL MPI_IRECV( T(ind_low_west2:ind_high_west2, ind_low_x), ncalcpoints_y_west2, MPI_DOUBLE_PRECISION, & 
-									west2, tag, COMM_TOPO, request_array(7), ierr)
-					! Send to the west2
-					CALL MPI_ISEND( T(ind_low_west2:ind_high_west2, ind_low_x+1), ncalcpoints_y_west2, MPI_DOUBLE_PRECISION, &
-									west2, tag, COMM_TOPO, request_array(8), ierr)
-									
-					! ------- RECEIVE FROM THE NORTH, SEND TO THE NORTH
-					! Receive from the north, put it into the space for the ghost node 
-					CALL MPI_IRECV( T(ind_low_y, ind_low_x+1), 1, NS_ROW_SENDRECV, &
-									north, tag, COMM_TOPO, request_array(9), ierr)
-					! Send to the north
-					CALL MPI_ISEND( T(ind_low_y+1, ind_low_x+1), 1, NS_ROW_SENDRECV, &
-									north, tag, COMM_TOPO, request_array(10), ierr)
-					! ------- RECEIVE FROM THE SOUTH, SEND TO THE SOUTH
-					! Receive from the south, put it into the space for the ghost node 
-					CALL MPI_IRECV( T(ind_high_y, ind_low_x+1), 1, NS_ROW_SENDRECV, &
-									south, tag, COMM_TOPO, request_array(11), ierr)
-					! Send to the south
-					CALL MPI_ISEND( T(ind_high_y-1, ind_low_x+1), 1, NS_ROW_SENDRECV, &
-									south, tag, COMM_TOPO, request_array(12), ierr)
+				! ------- RECEIVE FROM THE LEFT/WEST, SEND TO THE LEFT/WEST
+				! Receive from the west1, put it into the space for the ghost node on the west side 
+				CALL MPI_IRECV( T(ind_low_west1:ind_high_west1, ind_low_x), ncalcpoints_y_west1, MPI_DOUBLE_PRECISION, & 
+								west1, tag, COMM_TOPO, request_array(5), ierr)
+				! Send to the west1
+				CALL MPI_ISEND( T(ind_low_west1:ind_high_west1, ind_low_x+1), ncalcpoints_y_west1, MPI_DOUBLE_PRECISION, &
+								west1, tag, COMM_TOPO, request_array(6), ierr)
+								
+				! Receive from the west2, put it into the space for the ghost node on the west side 
+				CALL MPI_IRECV( T(ind_low_west2:ind_high_west2, ind_low_x), ncalcpoints_y_west2, MPI_DOUBLE_PRECISION, & 
+								west2, tag, COMM_TOPO, request_array(7), ierr)
+				! Send to the west2
+				CALL MPI_ISEND( T(ind_low_west2:ind_high_west2, ind_low_x+1), ncalcpoints_y_west2, MPI_DOUBLE_PRECISION, &
+								west2, tag, COMM_TOPO, request_array(8), ierr)
+								
+				! ------- RECEIVE FROM THE NORTH, SEND TO THE NORTH
+				! Receive from the north, put it into the space for the ghost node 
+				CALL MPI_IRECV( T(ind_low_y, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								north, tag, COMM_TOPO, request_array(9), ierr)
+				! Send to the north
+				CALL MPI_ISEND( T(ind_low_y+1, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								north, tag, COMM_TOPO, request_array(10), ierr)
+				! ------- RECEIVE FROM THE SOUTH, SEND TO THE SOUTH
+				! Receive from the south, put it into the space for the ghost node 
+				CALL MPI_IRECV( T(ind_high_y, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								south, tag, COMM_TOPO, request_array(11), ierr)
+				! Send to the south
+				CALL MPI_ISEND( T(ind_high_y-1, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								south, tag, COMM_TOPO, request_array(12), ierr)
 
-					! Wait for data sends to complete before black points start referencing red points
-					CALL MPI_WAITALL(12, request_array, status_array, ierr)
-
-
-					!-------------------------------------------------------------------!
-					! calculation of black nodes
-					call blacknodes(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
+				! Wait for data sends to complete before black points start referencing red points
+				CALL MPI_WAITALL(12, request_array, status_array, ierr)
 
 
-					!-------------------------------------------------------------------!
-					! COMMUNICATION of black nodes
-					! ------- RECEIVE FROM THE RIGHT/EAST, SEND TO THE RIGHT/EAST
-					! Receive from the east1, and put it into the space for the ghost node on the east side
-					CALL MPI_IRECV( T(ind_low_east1:ind_high_east1, ind_high_x), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
-									east1, tag, COMM_TOPO, request_array(1), ierr)
-					! Send to the east1
-					CALL MPI_ISEND( T(ind_low_east1:ind_high_east1, ind_high_x-1), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
-									east1, tag, COMM_TOPO, request_array(2), ierr)
-									
-					! Receive from the east2, and put it into the space for the ghost node on the east side
-					CALL MPI_IRECV( T(ind_low_east2:ind_high_east2, ind_high_x), ncalcpoints_y_east2, MPI_DOUBLE_PRECISION, &
-									east2, tag, COMM_TOPO, request_array(3), ierr)
-					! Send to the east2
-					CALL MPI_ISEND( T(ind_low_east2:ind_high_east2, ind_high_x-1), ncalcpoints_y_east2, MPI_DOUBLE_PRECISION, &
-									east2, tag, COMM_TOPO, request_array(4), ierr)
+				!-------------------------------------------------------------------!
+				! calculation of black nodes
+				call blacknodes(an,as,ae,aw,ap,b,T,Told,il,ih,jl,jh)
 
 
-					! ------- RECEIVE FROM THE LEFT/WEST, SEND TO THE LEFT/WEST
-					! Receive from the west1, put it into the space for the ghost node on the west side 
-					CALL MPI_IRECV( T(ind_low_west1:ind_high_west1, ind_low_x), ncalcpoints_y_west1, MPI_DOUBLE_PRECISION, & 
-									west1, tag, COMM_TOPO, request_array(5), ierr)
-					! Send to the west1
-					CALL MPI_ISEND( T(ind_low_west1:ind_high_west1, ind_low_x+1), ncalcpoints_y_west1, MPI_DOUBLE_PRECISION, &
-									west1, tag, COMM_TOPO, request_array(6), ierr)
-									
-					! Receive from the west2, put it into the space for the ghost node on the west side 
-					CALL MPI_IRECV( T(ind_low_west2:ind_high_west2, ind_low_x), ncalcpoints_y_west2, MPI_DOUBLE_PRECISION, & 
-									west2, tag, COMM_TOPO, request_array(7), ierr)
-					! Send to the west2
-					CALL MPI_ISEND( T(ind_low_west2:ind_high_west2, ind_low_x+1), ncalcpoints_y_west2, MPI_DOUBLE_PRECISION, &
-									west2, tag, COMM_TOPO, request_array(8), ierr)
-									
-					! ------- RECEIVE FROM THE NORTH, SEND TO THE NORTH
-					! Receive from the north, put it into the space for the ghost node 
-					CALL MPI_IRECV( T(ind_low_y, ind_low_x+1), 1, NS_ROW_SENDRECV, &
-									north, tag, COMM_TOPO, request_array(9), ierr)
-					! Send to the north
-					CALL MPI_ISEND( T(ind_low_y+1, ind_low_x+1), 1, NS_ROW_SENDRECV, &
-									north, tag, COMM_TOPO, request_array(10), ierr)
-					! ------- RECEIVE FROM THE SOUTH, SEND TO THE SOUTH
-					! Receive from the south, put it into the space for the ghost node 
-					CALL MPI_IRECV( T(ind_high_y, ind_low_x+1), 1, NS_ROW_SENDRECV, &
-									south, tag, COMM_TOPO, request_array(11), ierr)
-					! Send to the south
-					CALL MPI_ISEND( T(ind_high_y-1, ind_low_x+1), 1, NS_ROW_SENDRECV, &
-									south, tag, COMM_TOPO, request_array(12), ierr)
-
-					! Wait for data sends to complete before black points start referencing red points
-					CALL MPI_WAITALL(12, request_array, status_array, ierr)
-			
-
-					!-------------------------------------------------------------------!
-					! RESIDUALS
-					! computing residuals
-					! call respar(aw,ae,an,as,ap,b,T,resil,resih,resjl,resjh,resmat)
-					rcurrent = SUM(sum(ABS(Told(resil:resih,resjl:resjh) - T(resil:resih,resjl:resjh)),1),1) &
-										/ ((resih-resil+1)*(resjh-resjl+1))
-
-					! Calculate Domain averaged residual for stopping critterion
-					! rcurrent = SUM(SUM(ABS(resmat(resil:resih,resjl:resjh)),1),1) / ((resih-resil+1)*(resjh-resjl+1))
+				!-------------------------------------------------------------------!
+				! COMMUNICATION of black nodes
+				! ------- RECEIVE FROM THE RIGHT/EAST, SEND TO THE RIGHT/EAST
+				! Receive from the east1, and put it into the space for the ghost node on the east side
+				CALL MPI_IRECV( T(ind_low_east1:ind_high_east1, ind_high_x), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
+								east1, tag, COMM_TOPO, request_array(1), ierr)
+				! Send to the east1
+				CALL MPI_ISEND( T(ind_low_east1:ind_high_east1, ind_high_x-1), ncalcpoints_y_east1, MPI_DOUBLE_PRECISION, &
+								east1, tag, COMM_TOPO, request_array(2), ierr)
+								
+				! Receive from the east2, and put it into the space for the ghost node on the east side
+				CALL MPI_IRECV( T(ind_low_east2:ind_high_east2, ind_high_x), ncalcpoints_y_east2, MPI_DOUBLE_PRECISION, &
+								east2, tag, COMM_TOPO, request_array(3), ierr)
+				! Send to the east2
+				CALL MPI_ISEND( T(ind_low_east2:ind_high_east2, ind_high_x-1), ncalcpoints_y_east2, MPI_DOUBLE_PRECISION, &
+								east2, tag, COMM_TOPO, request_array(4), ierr)
 
 
-					! Summing processor residuals to get global resiudal and broadcasting to get average
-					call MPI_ALLREDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,COMM_TOPO,ierr)
-					rc = rc/nprocs
-					
-					write(*,*) rc
-					! call sleep(1)
+				! ------- RECEIVE FROM THE LEFT/WEST, SEND TO THE LEFT/WEST
+				! Receive from the west1, put it into the space for the ghost node on the west side 
+				CALL MPI_IRECV( T(ind_low_west1:ind_high_west1, ind_low_x), ncalcpoints_y_west1, MPI_DOUBLE_PRECISION, & 
+								west1, tag, COMM_TOPO, request_array(5), ierr)
+				! Send to the west1
+				CALL MPI_ISEND( T(ind_low_west1:ind_high_west1, ind_low_x+1), ncalcpoints_y_west1, MPI_DOUBLE_PRECISION, &
+								west1, tag, COMM_TOPO, request_array(6), ierr)
+								
+				! Receive from the west2, put it into the space for the ghost node on the west side 
+				CALL MPI_IRECV( T(ind_low_west2:ind_high_west2, ind_low_x), ncalcpoints_y_west2, MPI_DOUBLE_PRECISION, & 
+								west2, tag, COMM_TOPO, request_array(7), ierr)
+				! Send to the west2
+				CALL MPI_ISEND( T(ind_low_west2:ind_high_west2, ind_low_x+1), ncalcpoints_y_west2, MPI_DOUBLE_PRECISION, &
+								west2, tag, COMM_TOPO, request_array(8), ierr)
+								
+				! ------- RECEIVE FROM THE NORTH, SEND TO THE NORTH
+				! Receive from the north, put it into the space for the ghost node 
+				CALL MPI_IRECV( T(ind_low_y, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								north, tag, COMM_TOPO, request_array(9), ierr)
+				! Send to the north
+				CALL MPI_ISEND( T(ind_low_y+1, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								north, tag, COMM_TOPO, request_array(10), ierr)
+				! ------- RECEIVE FROM THE SOUTH, SEND TO THE SOUTH
+				! Receive from the south, put it into the space for the ghost node 
+				CALL MPI_IRECV( T(ind_high_y, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								south, tag, COMM_TOPO, request_array(11), ierr)
+				! Send to the south
+				CALL MPI_ISEND( T(ind_high_y-1, ind_low_x+1), 1, NS_ROW_SENDRECV, &
+								south, tag, COMM_TOPO, request_array(12), ierr)
 
-					Told = T
-				end do
+				! Wait for data sends to complete before black points start referencing red points
+				CALL MPI_WAITALL(12, request_array, status_array, ierr)
+		
+
+				!-------------------------------------------------------------------!
+				! RESIDUALS
+				! computing residuals
+				rcurrent = SUM(sum(ABS(Told(resil:resih,resjl:resjh) - T(resil:resih,resjl:resjh)),1),1) &
+									/ ((resih-resil+1)*(resjh-resjl+1))
+
+				! Summing processor residuals to get global resiudal and broadcasting to get average
+				call MPI_ALLREDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,COMM_TOPO,ierr)
+				rc = rc/nprocs
 
 				!-------------------------------------------------------------------!
 				! Printing to screen after a certain amount of time
-				if ((time-int(time))<dt) then
+				! if ((time-int(time))<dt) then
+				if ((MOD(iter,1000).eq.0)) then
 					! TECPLOT
 
 					! --------------------------------------------------------------------------------------- 
@@ -605,7 +568,7 @@ t1 = MPI_WTIME()
 						ytot 	= 0. + dy * [(i, i=0,(ny-1))] ! Implied DO loop used
 
 						! Writing updated solution to file at each new iteration
-						write(file_name, "(A9,I5,A4)") "TecPlot2D",iter,".tec"
+						write(file_name, "(A9,I5,A4)") "TecPlot2D",int(time),".tec"
 						CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tfinal,  file_name )
 					
 						write(*,*) '-----------------------------------------'
@@ -617,14 +580,13 @@ t1 = MPI_WTIME()
 						
 					END IF
 					
-                end if
+				end if
 
 
-                ! updating counter
-                time = time + dt
-                iter = iter + 1
-
-            end do
+				! updating counter
+				time = time + dt
+				iter = iter + 1
+			end do
 
         CASE("Conj")
 
@@ -717,5 +679,5 @@ END PROGRAM MAIN
 subroutine printmatrix(b,n,m)
 	integer::n,m
 	real (kind=8)::b(n,m) !n = # rows, m = # columns
-	do i=1,n; print '(20f6.2)',b(i,1:m); enddo
+	do i=1,n; print '(20f18.14)',b(i,1:m); enddo
 endsubroutine
