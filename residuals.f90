@@ -25,10 +25,12 @@ module residuals
         real(kind=8), dimension(il:ih,jl:jh), INTENT(IN) :: aw,ae,an,as,ap,b,T
         real(kind=8), dimension(il:ih,jl:jh), INTENT(OUT) :: res
 
+        res(:,:) = 0
+
         do j = jl+1,jh-1
             do i = il+1,ih-1    
-                res(i,j) = b(i,j) - ( as(i,j)*T(i-1,j) + an(i,j)*T(i+1,j) + ae(i,j)*T(i,j+1) &
-                                                    + aw(i,j)*T(i,j-1) + ap(i,j)*T(i,j) )		           
+                res(i,j) = b(i,j) - ( aw(i,j)*T(i-1,j) + ae(i,j)*T(i+1,j) + an(i,j)*T(i,j+1) &
+                                                    + as(i,j)*T(i,j-1) + ap(i,j)*T(i,j) )		           
             end do
         end do	
 

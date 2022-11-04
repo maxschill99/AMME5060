@@ -20,7 +20,7 @@ PROGRAM MAIN
 !| CODE CASES										───▄▀▀▀▄▄▄▄▄▄▄▀▀▀▄───		 |
 	topology = "slabs" 	!							───█▒▒░░░░░░░░░▒▒█───		 |
 !|		Options: "graph" "cart" "slabs" 			────█░░█░░░░░█░░█────		 |
-    solvertype = "jac"	!							─▄▄──█░░░▀█▀░░░█──▄▄─		 |
+    solvertype = "conj"	!							─▄▄──█░░░▀█▀░░░█──▄▄─		 |
 !| 		Options: "jac", "redblack", "conj"			█░░█─▀▄░░░░░░░▄▀─█░░█		 |
 ! -------------------------------------------------------------------------------
 
@@ -140,17 +140,18 @@ t1 = MPI_WTIME()
 	rc = 1
 
 	!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	! STABILITY CRITERION CHECK
-	CFL = (1/(dx**2) + 1/(dy**2))*alpha*dt
-	! CFL = (alpha*dt)/dx**2
+	! SOLUTION ACCURACY CHECK
+	! CFL = ((1/(dx**2) + 1/(dy**2))*alpha*dt)
+	CFL = (1 - (4*dt*alpha)/dx**2)
+	uncondstab = (dt*alpha)/dx**2
 	if (pid.eq.0) then
-		write(*,*) 'Stability criterion: ', CFL
+		write(*,*) 'Explicit Stability: ', CFL, 'Implicit Accuracy: ', uncondstab
 	end if
 	if (CFL.GT.0.5) then
-		write(*,*) 'Stability criterion not met, needs to be less than 0.5'
+		write(*,*) 'Explicit Stability not met, needs to be less than 0.5'
 		STOP
 	elseif (CFL.LT.0) then
-		write(*,*) 'Stability criterion less than 0'
+		write(*,*) 'Explicit Stability less than 0'
 		STOP
 	end if
 
@@ -457,6 +458,8 @@ t1 = MPI_WTIME()
 				CALL MPI_WAITALL(12, request_array, status_array, ierr)
 
 
+
+				Told = T
 				!-------------------------------------------------------------------!
 				! calculation of black nodes
 				call blacknodes(an,as,ae,aw,ap,b,T,Told,il,ih,jl,jh)
@@ -588,10 +591,233 @@ t1 = MPI_WTIME()
 				iter = iter + 1
 			end do
 
-        CASE("Conj")
+        CASE("conj")
 
-            ! ! Calculation of solution using Conjugate Gradient Method
-            ! ! call CGSolve(an,as,ae,aw,ap,b,T)
+            ! Calculation of solution using Conjugate Gradient Method
+			allocate(Minv(il:ih,jl:jh))
+			allocate(dmat(il:ih,jl:jh))
+			allocate(qmat(il:ih,jl:jh))
+			allocate(smat(il:ih,jl:jh))
+
+			do j = jl,jh	
+				do i = il,ih
+					ap(i,j) = 1
+					an(i,j) = ((dt*alpha)/(dx*dx))
+					as(i,j) = ((dt*alpha)/(dx*dx))
+					ae(i,j) = ((dt*alpha)/(dx*dx))
+					aw(i,j) = ((dt*alpha)/(dx*dx))
+					b(i,j) = (1- (4*dt*alpha)/(dx*dx))
+
+					! ap(i,j) = (1- (4*dt*alpha)/(dx*dx))
+					! an(i,j) = ((dt*alpha)/(dx*dx))
+					! as(i,j) = ((dt*alpha)/(dx*dx))
+					! ae(i,j) = ((dt*alpha)/(dx*dx))
+					! aw(i,j) = ((dt*alpha)/(dx*dx))
+					! b(i,j) = 0
+				end do
+			end do
+
+			! Pre-conditioner counter and check
+			niter_precon = 5
+			precon = .TRUE.
+
+			! Initialising solution constants and vectors
+			! Initialising delta and delta0
+			delta = 1.0
+			delta_o = 1.0
+			! Initialising dot product variable
+			dp = 0.0
+			! Initialising aconst and beta
+			aconst = 1.0
+			beta = 1.0
+			! Initialising q and s
+			Minv(:,:) = 0.0
+			dmat(:,:) = 0.0
+			qmat(:,:) = 0.0
+			smat(:,:) = 0.0
+
+			! Calculating d matrix (search vector matrix)
+			do j = jl,jh
+				do i = il,ih
+					Minv(i,j) = 1/ap(i,j)
+				end do
+			end do
+
+			if (precon) then
+				do j = jl,jh
+					do i = il,ih
+						dmat(i,j) = Minv(i,j)*resmat(i,j)
+					end do
+				end do
+			end if
+
+			! initiliasing residuals
+			call respar(aw,ae,an,as,ap,b,T,il,ih,jl,jh,resmat)
+			
+			! Calculate Domain averaged residual for stopping critterion
+			rcurrent = SUM(SUM(ABS(resmat(il:ih,jl:jh)),1),1) / ((ih-il+1)*(jh-jl+1))
+			! Summing processor residuals to get global resiudal and broadcasting to get average
+			call MPI_ALLREDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,COMM_TOPO,ierr)
+			rc = rc/nprocs
+
+			! Pre-conditioning matrix
+			if (precon) then
+				call jacpre(ae,aw,an,as,ap,resmat,Minv,dmat,il,ih,jl,jh)
+			else
+				dmat = resmat
+			end if
+
+			! Calculating delta and delta0
+			do j = jl,jh
+				do i = il,ih
+					dp = dp + resmat(i,j)*dmat(i,j)
+				end do
+			end do
+
+			! Assigning values for delta and delta_o
+			delta = dp
+			delta_o = delta
+			
+			!-------------------------------------------------------------------------!
+			!-------------------------------------------------------------------------!
+			!-------------------------------------------------------------------------!
+			! Begin solution loop
+			do while ((rc>res_max).and.(time<t_final))
+
+				! Compute q matrix
+				do j = jl,jh
+					do i = il,ih
+						qmat(i,j) = aw(i,j)*dmat(i-1,j) + ae(i,j)*dmat(i+1,j) + an(i,j)*dmat(i,j+1) + as(i,j)*dmat(i,j-1) &
+								+ ap(i,j)*dmat(i,j)
+					end do
+				end do
+
+				dp = 0
+				! compute aconst - note computing dot product in the numerator
+				do j = jl,jh
+					do i = il,ih
+						dp = dp + dmat(i,j)*qmat(i,j)
+					end do
+				end do
+				aconst = delta/dp
+
+				! updating T
+				do j = jl,jh
+					do i = il,ih
+						T(i,j) = T(i,j) + aconst*dmat(i,j)
+					end do
+				end do
+
+				! Updating residual
+				if ((MOD(iter,50).eq.0)) then
+					call respar(aw,ae,an,as,ap,b,T,il,ih,jl,jh,resmat)
+				else
+					do j = jl,jh
+						do i = il,ih
+							resmat(i,j) = resmat(i,j) - aconst*qmat(i,j)
+						end do
+					end do
+				end if
+
+				! Pre-conditioning s matrix
+				if (precon) then
+					call jacpre(ae,aw,an,as,ap,resmat,Minv,smat,il,ih,jl,jh)
+				else
+					smat = resmat
+				end if
+
+				delta_o = delta
+
+				dp = 0
+				! Calculating delta and delta0
+				do j = jl,jh
+					do i = il,ih
+						dp = dp + resmat(j,i)*smat(i,j)
+					end do
+				end do
+				
+				delta = dp
+
+				! Computing beta
+				beta = delta/delta_o
+				
+				! Updating search vector
+				do j = jl,jh
+					do i = il,ih
+						dmat(i,j) = smat(i,j) + beta*dmat(i,j)
+					end do
+				end do
+
+
+				! Update residual check	
+				rcurrent = SUM(SUM(ABS(resmat(il:ih,jl:jh)),1),1) / ((ih-il+1)*(jh-jl+1))
+				! ! Summing processor residuals to get global resiudal and broadcasting to get average
+				! call MPI_ALLREDUCE(rcurrent,rc,1,MPI_DOUBLE_PRECISION,MPI_SUM,COMM_TOPO,ierr)
+				! rc = rc/nprocs	
+				rc = rcurrent
+
+				!-------------------------------------------------------------------!
+				! Printing to screen after a certain amount of time
+				! if ((time-int(time))<dt) then
+				if ((MOD(iter,100).eq.0)) then
+					! TECPLOT
+
+					! --------------------------------------------------------------------------------------- 
+					!     _____     ____
+					!    /      \  |  o | 
+					!   |        |/ ___\|                TECPLOT
+					!   |_________/     
+					!   |_|_| |_|_|
+					!	  
+					! ---------------------------------------------------------------------------------------
+
+					! These subarrays are now sent to PID 0
+					CALL MPI_ISEND( T, 1, SENDINGSUBBARAY, 0, tag2, COMM_TOPO, request_array_gather(1), ierr)	
+							
+					! Pid 0 receiving data and putting into final file
+					IF (pid .EQ. 0) THEN
+
+						DO i = 0, Nprocs-1
+						
+							! Creating receive subarray type bespoke to each processor
+							CALL MPI_Type_create_subarray(2, [ny, nx], [subarray_rows_array(i+1), subarray_cols_array(i+1)], &
+							[subarray_row_start(i+1),subarray_col_start(i+1)], MPI_ORDER_FORTRAN, MPI_DOUBLE_PRECISION, RECVSUBBARAY, ierr)
+							
+							CALL MPI_TYPE_COMMIT(RECVSUBBARAY, ierr)
+						
+							! Receiving with this new receiving subarray type
+							CALL MPI_IRECV( Tfinal, 1, RECVSUBBARAY, &
+								i, tag2, COMM_TOPO, request_array_gather(i+2), ierr)
+						END DO
+
+						CALL MPI_WAITALL(Nprocs+1, request_array_gather, status_array_gather, ierr)
+						
+						! --- PUTTING INTO FILE ---
+						! x vector of whole domain (could have also done a mpi_gatherv)
+						xtot 	= 0. + dx * [(i, i=0,(nx-1))] ! Implied DO loop used
+						! y vector of whole domain (could have also done a mpi_gatherv)
+						ytot 	= 0. + dy * [(i, i=0,(ny-1))] ! Implied DO loop used
+
+						! Writing updated solution to file at each new iteration
+						write(file_name, "(A9,I5,A4)") "TecPlot2D",int(time),".tec"
+						CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tfinal,  file_name )
+				
+						write(*,*) '-----------------------------------------'
+						write(*,*) 'Time =', time
+						write(*,*) 'Iteration =', iter
+						write(*,*) 'Residual =', rc
+						write(*,*) 'Average Temperature =', sum(sum((Tfinal),1),1)/(nx*ny)
+						write(*,*) '-----------------------------------------'
+						
+					end if
+					
+				end if
+
+				! Updating timer and iteration counter
+				time = time + dt
+				iter = iter + 1
+
+			end do 
 
     	CASE DEFAULT 
 		WRITE(*,*) "No solver selected or incorrect selection"
@@ -607,14 +833,14 @@ t1 = MPI_WTIME()
 		write(*,*) 'Time =', time
 		write(*,*) 'Iteration =', iter
 		write(*,*) 'Residual =', rc
-		write(*,*) 'CFL =', CFL
+		write(*,*) 'CFL =', CFL, 'Iplicit Accuracy =', uncondstab
 		t2 = MPI_WTIME()
 		write(*,*) 'Computational time =', t2-t1, 'seconds'
 		write(*,*) 'Average Temperature =', sum(sum((Tfinal),1),1)/(nx*ny)
 		write(*,*) '-----------------------------------------'
 
 		! Writing the final iteration to a tecplot file
-		write(file_name, "(A9,I5,A4)") "TecPlot2D",int(time),".tec"
+		write(file_name, "(A14,A4)") "TecPlot2Dfinal",".tec"
 		CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tfinal,  file_name )
 
 		! 	! Checking what size the A matrix coefficients are

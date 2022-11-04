@@ -35,7 +35,7 @@ module cgradient
         Real(kind = 8), INTENT(IN), dimension(il:ih,jl:jh) :: an, as, ae, aw, ap, b
         Real(kind = 8), INTENT(INOUT) :: T(il:ih,jl:jh)
 
-        Real(kind = 8), dimension(nx,ny) :: Minv, d, res, q, s, Tin, Tout
+        Real(kind = 8), dimension(il:ih,jl:jh) :: Minv, d, resmat, q, s
         Real(kind = 8) :: delta, delta_o, dp, alpha, beta
         Real(kind = 8) :: rcurrent
         Integer :: i,j,niter_precon, il,jl,ih,jh
@@ -63,26 +63,21 @@ module cgradient
         s(:,:) = 0
 
         ! initiliasing residuals
-        call residcalc(aw,ae,an,as,ap,b,T,res)
+        call residcalc(aw,ae,an,as,ap,b,T,resmat)
           
         ! Calculate Domain averaged residual for stopping critterion
-        ! rcurrent = SUM(SUM(ABS(r(il:ih,jl:jh)),1),1) / ((kx-2)*(ky-2))
-        rcurrent = SUM(SUM(ABS(res(1:nx,1:ny)),1),1) / ((nx-2)*(ny-2))
+        rcurrent = SUM(SUM(ABS(resmat(il:ih,jl:jh)),1),1) / ((ih-il+1)*(jh-jl+1))
 
         ! Calculating d matrix (search vector matrix)
-        do j = 1,ny
-        ! do j = jl,jh
-            do i = 1,nx
-            ! do i = il,ih
+        do j = jl,jh
+            do i = il,ih
                 Minv(i,j) = 1/ap(i,j)
             end do
         end do
 
         if (precon) then
-            do j = 1,ny
-            ! do j = jl,jh
-                do i = 1,nx
-                ! do i = il,ih
+            do j = jl,jh
+                do i = il,ih
                     d(i,j) = Minv(i,j)*res(i,j)
                 end do
             end do
@@ -92,15 +87,13 @@ module cgradient
         if (precon) then
             call jacobiprecon(ae,aw,an,as,ap,b,Minv,d)
         else
-            d = res
+            d = resmat
         end if
 
         ! Calculating delta and delta0
-        do j = 1,ny
-        ! do j = jl,jh
-            do i = 1,nx
-            ! do i = il,ih
-                dp = dp + res(i,j)*d(i,j)
+        do j = jl,jh
+            do i = il,ih
+                dp = dp + resmat(i,j)*d(i,j)
             end do
         end do
 
@@ -120,10 +113,8 @@ module cgradient
         do while ((time < t_final).and.(rcurrent < res_max))
 
             ! Compute q matrix
-            do j = 2,(ny-1)
-            ! do j = jl,jh
-                do i = 2,(nx-1)
-                ! do i = il,ih
+            do j = jl+1,jh-1
+                do i = il+1,ih-1
                     q(i,j) = ae(i,j)*d(i-1,j) + aw(i,j)*d(i+1,j) + an(i,j)*d(i,j+1) + as(i,j)*d(i,j-1) &
                                + ap(i,j)*d(i,j)
                 end do
@@ -132,20 +123,16 @@ module cgradient
 
             dp = 0
             ! compute alpha - note computing dot product in the numerator
-            do j = 1,ny
-            ! do j = jl,jh
-                do i = 1,nx
-                ! do i = il,ih
+            do j = jl,jh
+                do i = il,ih
                     dp = dp + d(i,j)*q(i,j)
                 end do
             end do
             alpha = delta/dp
 
             ! updating T
-            do j = 1,ny
-            ! do j = jl,jh
-                do i = 1,nx
-                ! do i = il,ih
+            do j = jl,jh
+                do i = il,ih
                     T(i,j) = T(i,j) + alpha*d(i,j)
                 end do
             end do
@@ -153,13 +140,11 @@ module cgradient
 
             ! Updating residual
             if ((MOD(iter,50).eq.0)) then
-                call residcalc(aw,ae,an,as,ap,b,T,res)
+                call residcalc(aw,ae,an,as,ap,b,T,mat)
             else
-                do j = 1,ny
-                ! do j = jl,jh
-                    do i = 1,nx
-                    ! do i = il,ih
-                        res(i,j) = res(i,j) - alpha*q(i,j)
+                do j = jl,jh
+                    do i = il,ih
+                        resmat(i,j) = resmat(i,j) - alpha*q(i,j)
                     end do
                 end do
             end if
@@ -169,17 +154,15 @@ module cgradient
             if (precon) then
                 call jacobiprecon(ae,aw,an,as,ap,b,Minv,s)
             else
-                s = res
+                s = resmat
             end if
 
 
             dp = 0
             ! Calculating delta and delta0
-            do j = 1,ny
-            ! do j = jl,jh
-                do i = 1,nx
-                ! do i = il,ih
-                    dp = dp + res(j,i)*s(i,j)
+            do j = jl,jh
+                do i = il,ih
+                    dp = dp + resmat(j,i)*s(i,j)
                 end do
             end do
             
@@ -191,16 +174,14 @@ module cgradient
             beta = delta/delta_o
             
             ! Updating search vector
-            do j = 1,ny
-            ! do j = jl,jh
-                do i = 1,nx
-                ! do i = il,ih
+            do j = jl,jh
+                do i = il,ih
                     d(i,j) = s(i,j) + beta*d(i,j)
                 end do
             end do
 
             ! Update residual check	
-		    rcurrent = SUM(SUM(ABS(res(1:nx,1:ny)),1),1) / ((nx-2)*(ny-2))	
+		    rcurrent = SUM(SUM(ABS(resmat(il:ih,jl:jh)),1),1) / ((ih-il+1)*(jh-jl+1))	
 
 
             ! Updating timer and iteration counter

@@ -75,18 +75,11 @@ USE variablemodule
                 ! b(i,j) = 0
 
                 ! IMPLICIT
-                ! an(i,j) = ((dt*alpha)/dx**2)/(1 + (4*dt*alpha)/dx**2)
-                ! as(i,j) = an(i,j)
-                ! ae(i,j) = an(i,j)
-                ! aw(i,j) = an(i,j)
-                ! ! ap(i,j) = 1/(1 + (4*dt*alpha)/dx**2)
-                ! ap(i,j) = (F*(Tn(i+1,j) + Tn(i-1,j) + Tn(i,j+1) + Tn(i,j-1)))/(1 + 4*F)
-                ! b(i,j) = 0
-                ap(i,j) = 1 + (2*k)/hsq
-                an(i,j) = k/(2*hsq)
-                as(i,j) = k/(2*hsq)
-                ae(i,j) = k/(2*hsq)
-                aw(i,j) = k/(2*hsq)
+                ap(i,j) = (1- (4*dt*alpha)/(dx*dx))
+                an(i,j) = ((dt*alpha)/(dx*dx))
+                as(i,j) = ((dt*alpha)/(dx*dx))
+                ae(i,j) = ((dt*alpha)/(dx*dx))
+                aw(i,j) = ((dt*alpha)/(dx*dx))
                 b(i,j) = 0
             end do
         end do

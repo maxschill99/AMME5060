@@ -46,7 +46,7 @@ MODULE variablemodule
     Real(kind = 8), allocatable :: T(:,:)
     Real(kind = 8), allocatable :: an(:,:), as(:,:), ae(:,:), aw(:,:), ap(:,:), b(:,:)
     Integer(kind = 8) :: il, ih, jl, jh, npp, iter, resil, resih, resjl, resjh
-	Real(kind = 8) :: CFL
+	Real(kind = 8) :: CFL, uncondstab
 
     ! Solution solver variables
     Real(kind = 8) :: rcurrent, rc, time
@@ -55,6 +55,12 @@ MODULE variablemodule
     ! Gathering variables for final solution
     Real(kind = 8), allocatable :: Ttemp(:,:), Ttot(:,:), Tinit(:,:), Tinittot(:,:)
     Real(kind = 8) :: numcount
+
+	! Conjugate gradient variables
+	Real(kind = 8), allocatable :: Minv(:,:), dmat(:,:), qmat(:,:), smat(:,:)
+	Real(kind = 8) :: delta, delta_o, beta, dp, aconst
+	Integer :: niter_precon, ii
+	Logical :: precon
 
 	! Plotting
 	Character(len=1024) ::  file_name
@@ -83,10 +89,10 @@ MODULE variablemodule
 	
 	! CHANGE WHAT'S IN HERE, MARK
 	! ---------------------------------------------------------------------------------------------------
-		nx 		= 128				! Number of points in domain in x direction (evenly spaced)
-		ny 		= 128			! Number of points in domain in y direction (evenly spaced)
-		res_max = 1e-8					! Maximum residual value
-		dt		= 0.025		! Time step size [s]
+		nx 		= 500				! Number of points in domain in x direction (evenly spaced)
+		ny 		= 500			! Number of points in domain in y direction (evenly spaced)
+		res_max = 1e-7					! Maximum residual value
+		dt		= 0.00969		! Time step size [s]
 		t_final = 10000.				! [s] &&& just a guess for now - CHANGE TO WHATEVER'S APPROPRIATE
 	! ---------------------------------------------------------------------------------------------------	
 	
