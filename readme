@@ -1,0 +1,18 @@
+Choice of topology and solver type can be changed between line 19 and 25 in main.f90
+Note that conjugate gradient solver type has still been included, but the outputted results dont match jacobi and redblack
+
+The varmod_MP.f90 contains all the variables used in solver calculation including diffusion constant, grid size, time step and max residual
+
+A makefile has been implemented for ease of computation and the executible file is test1.exe
+
+
+
+F90 Files:
+main.f90 - main script to run code from
+varmod_MP.f90 - variable initialisation
+outputmod_MP.f90 - produces TecPlot file
+nodemod_MP.f90 - gets the nodes of each processor domain
+partitioning_MP.f90 - partitions the domain based on the chosen decomposition method
+residuals.f90 - computes the residual matrix of the current iteration
+init.f90 - Initialises the Ax = b matrices and allocates the variable dimensions
+jacobi.f90 - computes the updated temperature using jacobi and redblack

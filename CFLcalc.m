@@ -12,7 +12,7 @@ nCFL = 0.25;
 
 syms CFL dx alpha dt
 
-eqn = CFL == (1/(dx^2) + 1/(dx^2))*alpha*dt;
+eqn = CFL == 1 - (4*alpha*dt)/dx^2;
 
 % THIS IS THE VALUE THAT YOU ARE CALCULATING FROM THE SOLVER
 % NEED TO UPDATE THE CORRESPNDING VALUES ABOVE

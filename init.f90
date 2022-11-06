@@ -1,4 +1,5 @@
 module solinit
+! Initialises the solution
 
 USE variablemodule
 
@@ -17,6 +18,7 @@ USE variablemodule
                                                       b(:,:), T(:,:), Told(:,:), Tn(:,:), res(:,:)
         Integer(kind = 8), INTENT(IN) :: il,ih,jl,jh
 
+        ! Allocating sizes to variables
         allocate(an(il:ih,jl:jh))
         allocate(as(il:ih,jl:jh))
         allocate(ae(il:ih,jl:jh))
@@ -37,7 +39,7 @@ USE variablemodule
     !-------------------------------------------------------------------------------------------!
     !-------------------------------------------------------------------------------------------!
     ! subroutine to initialise solution
-    SUBROUTINE solutioninit(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
+    subroutine solutioninit(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
 
         ! ! Declaring local variables
         ! Integer :: il,ih,jl,jh
@@ -61,19 +63,8 @@ USE variablemodule
 
 
         ! Computing A and B matrices - need matrices for conjugate gradient method
-        ! do j = 1,ny
         do j = jl,jh
-            ! do i = 1,nx
             do i = il,ih
-                ! EXPLICIT
-                ! simplifying variable notation
-                ! an(i,j) = (dt*alpha)/dy**2
-                ! as(i,j) = (dt*alpha)/dy**2
-                ! ae(i,j) = (dt*alpha)/dx**2
-                ! aw(i,j) = (dt*alpha)/dx**2
-                ! ap(i,j) = 1 - (2*dt*alpha)/dx**2 - (2*dt*alpha)/dy**2
-                ! b(i,j) = 0
-
                 ! IMPLICIT
                 ap(i,j) = (1- (4*dt*alpha)/(dx*dx))
                 an(i,j) = ((dt*alpha)/(dx*dx))
@@ -114,7 +105,7 @@ USE variablemodule
         end if
 
 
-    END SUBROUTINE solutioninit
+    end subroutine solutioninit
 
 
 
