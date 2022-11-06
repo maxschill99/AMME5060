@@ -15,8 +15,6 @@ MODULE partitionmodule
 	SUBROUTINE graph_partition()
 		IMPLICIT NONE
 	
-		! See: https://mathproblems123.wordpress.com/2015/09/20/optimal-partitioning-of-a-square-into-rectangles/
-		
 		! Constants p and n
 		! p = number of rectangles the square is to be divided into
 		! n = nearest square less than or equal to p
@@ -32,11 +30,11 @@ MODULE partitionmodule
 			s = p - n*(n+1)
 		END IF
 		
-		! &&& Writing to screen how the domain will be partitioned 
-		if (pid == 0) then
-			write(*,*) r, 'columns of ', n, 'rectangles with height (rows)', 1/DBLE(n), 'width (cols)', DBLE(n)/DBLE(p)
-			write(*,*) s, 'columns of ', n+1, 'rectangles with height (rows)', 1 /(DBLE(n) + 1), 'width (cols)', ( DBLE(n)+1) / DBLE(p)
-		end if 
+		! Writing to screen how the domain will be partitioned 
+		! if (pid == 0) then
+			! write(*,*) r, 'columns of ', n, 'rectangles with height (rows)', 1/DBLE(n), 'width (cols)', DBLE(n)/DBLE(p)
+			! write(*,*) s, 'columns of ', n+1, 'rectangles with height (rows)', 1 /(DBLE(n) + 1), 'width (cols)', ( DBLE(n)+1) / DBLE(p)
+		! end if 
 
 		! **********************************************************************
 		! ******************  G R A P H   T O P O L O G Y  *********************
@@ -115,9 +113,6 @@ MODULE partitionmodule
 				! Adding to indexes array needed to define the graph topology communicator later
 				indexes(alloc_pid+1) = cumulative_neighbours
 				
-				! IF (pid .EQ. alloc_pid) THEN
-					! WRITE(*,*) "i am pid", pid, north, south, east1, east2, west1, west2
-				! end if
 				
 			END DO
 		END DO
@@ -318,12 +313,6 @@ MODULE partitionmodule
 		END IF
 		ind_high_west2 = ind_high_y-1
 		ncalcpoints_y_west2 = ind_high_west2 - ind_low_west2 + 1 ! For send/recv `count`
-		
-		! ! -------------------------------------------------------
-		! IF (pid .EQ. alloc_pid) THEN
-			! WRITE(*,*) "i am pid", pid, north, south, east1, east2, west1, west2
-		! end if
-		
 	
 	END SUBROUTINE graph_partition
 	
@@ -331,7 +320,7 @@ MODULE partitionmodule
 	!	   A_A
 	!	  (-.-)
 	!	   |-|
-	!	  /   \						cartesian decomposition subroutine
+	!	  /   \						cat-esian decomposition subroutine
 	!	 |     |   __
 	!	 |  || |  |  \__
 	!	  \_||_/_/
@@ -364,6 +353,7 @@ MODULE partitionmodule
 		ndims = 2 ! Partition in 2 dimensions
 		ALLOCATE( dims(ndims), periods(ndims), coords(ndims))
 		
+		! USE SLABS IF YOU WANT TO TEST PRIME NUMBERS OF PROCESSORS
 		IF (bestdiv .EQ. 1) THEN ! The number is prime and the domain cannot be partitioned in 2 dimensions
 			WRITE(*,*) 'ERROR: You have picked cartesian 2D but the number of processors is prime. Program stopping.'
 			STOP

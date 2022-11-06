@@ -15,13 +15,13 @@ PROGRAM MAIN
 	! Variable declaration and assignment
 	CALL intialise()
 
-! -------------------------------------------------------------------------------	
-!| CODE CASES										───▄▀▀▀▄▄▄▄▄▄▄▀▀▀▄───		 |
-	topology = "slabs" 	!							───█▒▒░░░░░░░░░▒▒█───		 |
-!|		Options: "graph" "cart" "slabs" 			────█░░█░░░░░█░░█────		 |
-    solvertype = "jac"	!							─▄▄──█░░░▀█▀░░░█──▄▄─		 |
-!| 		Options: "jac", "redblack", "conj"			█░░█─▀▄░░░░░░░▄▀─█░░█		 |
-! -------------------------------------------------------------------------------
+! ----------------------------------------------	
+!| CODE CASES									|
+	topology = "slabs" 	!						|
+!|		Options: "graph" "cart" "slabs" 		|
+    solvertype = "jac"	!						|
+!| 		Options: "jac", "redblack", "conj"		|
+! ----------------------------------------------
 
 ! 	INITIALISE MPI
 	CALL MPI_INIT(ierr)
@@ -31,10 +31,10 @@ PROGRAM MAIN
 ! Begin timer
 t1 = MPI_WTIME()
 
-! INITIALISE PARTITIONING
-	! module
-	! outputs - local x, local y, low + high indxx, low + high indxy, low + high nodex, low + high nodey, all neighbour pid vals, idx east1/east2/west1/west2, number of send/recv points toe neighbours (east1/east2/west1/west2) 
-	
+	! -----------------------------------------------------------------------------------------------------
+	! TOPOLOGY
+	! -----------------------------------------------------------------------------------------------------
+
 	SELECT CASE (topology)
 	
 		CASE ("graph")
@@ -57,6 +57,7 @@ t1 = MPI_WTIME()
 			
 		CASE ("cart")
 		
+			!  Obtain how many processors in each dimension (set up `dims` and `periods`)
 			CALL cart_partition()
 		
 			! Create a new cartesian communicator based on the above analysis
@@ -68,10 +69,12 @@ t1 = MPI_WTIME()
 			CALL MPI_CART_SHIFT(COMM_TOPO, 0, 1, west1, east1, ierr)
 			CALL MPI_CART_SHIFT(COMM_TOPO, 1, 1, north, south, ierr)
 			
+			! Define indices of arrays and nodes considered, and data associated with east2/west2
 			CALL cart_nodesindices()
 			
 		CASE ("slabs")
 		
+			! Set up `dims` and `periods`
 			CALL slab_partition()
 		
 			! Create a new cartesian communicator based on the above analysis
@@ -83,6 +86,7 @@ t1 = MPI_WTIME()
 			CALL MPI_CART_SHIFT(COMM_TOPO, 0, 1, west1, east1, ierr)
 			CALL MPI_CART_SHIFT(COMM_TOPO, 1, 1, north, south, ierr)
 			
+			! Define indices of arrays and nodes considered, and data associated with east2/west2
 			CALL slab_nodesindices()
 	
 		CASE DEFAULT 
@@ -94,51 +98,33 @@ t1 = MPI_WTIME()
 	CALL MPI_TYPE_VECTOR(ncalcpoints_x, 1, ncalcpoints_y+2, MPI_DOUBLE_PRECISION, NS_ROW_SENDRECV , ierr)
 	CALL MPI_TYPE_COMMIT(NS_ROW_SENDRECV, ierr)
 	
-
-! ! !-----------------------------------------------------------------------------------------------------!
-! ! !-----------------------------------------------------------------------------------------------------!
-		! ┈┈╱▔▔▔▔▔▔▔▏ 
-		! ┈╱ ╭▏╮╭┻┻╮╭┻┻╮╭▏ 
-		! ▕╮╰▏╯┃╭╮┃┃╭╮┃╰▏ 
-		! ▕╯┈▏┈┗┻┻┛┗┻┻┻╮▏ 
-		! ▕╭╮▏╮┈┈┈┈┏━━━╯▏
-		! ▕╰╯▏╯╰┳┳┳┳┳┳╯╭▏ 
-		! ▕┈╭▏╭╮┃┗┛┗┛┃┈╰▏ 
-		! ▕┈╰▏╰╯╰━━━━╯┈┈▏
-
-	! ! !-----------------------------------------------------------------------------------------------------!
-	! ! !-----------------------------------------------------------------------------------------------------!
+	
+	! -----------------------------------------------------------------------------------------------------
 	! INITIALISATION
+	! -----------------------------------------------------------------------------------------------------
 
 	! Indices for computation
 	il = ind_low_y; ih = ind_high_y; jl = ind_low_x; jh = ind_high_x ! Indices for temperature calculations
 	resil = node_low_y; resih = node_high_y; resjl = node_low_x; resjh = node_high_x ! Nodes for residual calculations
 
-	!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	! INITIALISE TEMP DISTRIBUTION 
-	! boundary conditions most pizza like
 	! Allocation of variable sizes
 	call allocatevars(an,as,ae,aw,ap,b,T,Told,Tn,res,il,ih,jl,jh)
 
-	!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	! Initialising boundary conditions on temp array
 	call solutioninit(an,as,ae,aw,ap,b,T,il,ih,jl,jh)
 
-	! !!!!!!!!!!!!!!!!!!!!!!!!!!!
 	! Initialising new temp array and setting its value to T
 	Tn(:,:) = 0
 	Tn = T
 	Told(:,:) = 0
-	! Told = T
 
-	!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	! INITIAL RESIDUAL
 	! Initialising residual matrix
 	allocate(resmat(resil:resih,resjl:resjh))
 	resmat(:,:) = 0.0
 	rc = 1
 
-	!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	! SOLUTION ACCURACY CHECK
 	! CFL = ((1/(dx**2) + 1/(dy**2))*alpha*dt)
 	CFL = (1 - (4*dt*alpha)/dx**2)
@@ -159,27 +145,9 @@ t1 = MPI_WTIME()
 	time = 0
 	iter = 0
 
-	! if (pid==0) then
-	! 	write(*,*) 'before solver'
-	! 	call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
-	! 	! Stop
-	! end if
-
-	! if (pid==1) then
-	! 	write(*,*) pid, 'before solver'
-	! 	call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
-	! 	Stop
-	! end if
-
-	! ! !-----------------------------------------------------------------------------------------------------!
-	! ! !-----------------------------------------------------------------------------------------------------!
-	!!!!!!!!!!!!!!!!!!!!!!!!!!! COMPUTATION !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	! ░▄▀▀▀▀▄░░▄▄
-	! █░░░░░░▀▀░░█░░░░░░▄░▄
-	! █░║░░░░██░████████████ 
-	! █░░░░░░▄▄░░█░░░░░░▀░▀
-	! ░▀▄▄▄▄▀░░▀▀
-
+	! -----------------------------------------------------------------------------------------------------
+	! SEND/RECV SET UP
+	! -----------------------------------------------------------------------------------------------------
 
 	ALLOCATE( status_array(MPI_STATUS_SIZE, 12) )
 	ALLOCATE( request_array(12) )
@@ -213,14 +181,11 @@ t1 = MPI_WTIME()
 		CALL MPI_GATHER( node_low_y-1, 	 1, MPI_INTEGER, subarray_row_start,  1, MPI_INTEGER, 0, COMM_TOPO, ierr )
 		! Start column location in the final matrix (minus 1 because start location starts at zero)
 		CALL MPI_GATHER( node_low_x-1, 	 1, MPI_INTEGER, subarray_col_start,  1, MPI_INTEGER, 0, COMM_TOPO, ierr )
-			
-					! if (pid==0) then
-					! 	write(*,*) 'BEOFRE JAC'
-					! 	call printmatrix(T, SIZE(T, DIM=1), SIZE(T, DIM=2))
-					! 	! Stop
-					! end if
 
+
+	! -----------------------------------------------------------------------------------------------------
 	! SOLVING
+	! -----------------------------------------------------------------------------------------------------
     SELECT CASE (solvertype)
 
         ! JACOBI
@@ -297,20 +262,9 @@ t1 = MPI_WTIME()
 
 				!-------------------------------------------------------------------!
 				! Printing to screen after a certain amount of time
-				! if ((time-int(time))<dt) then
-				! if (MOD(int(time-int(time)),250)) then
 				if ((MOD(iter,1000).eq.0)) then
 
 					! TECPLOT
-
-					! --------------------------------------------------------------------------------------- 
-					!     _____     ____
-					!    /      \  |  o | 
-					!   |        |/ ___\|                TECPLOT
-					!   |_________/     
-					!   |_|_| |_|_|
-					!	  
-					! ---------------------------------------------------------------------------------------
 
 					! These subarrays are now sent to PID 0
 					CALL MPI_ISEND( T, 1, SENDINGSUBBARAY, 0, tag2, COMM_TOPO, request_array_gather(1), ierr)	
@@ -323,7 +277,6 @@ t1 = MPI_WTIME()
 							! Creating receive subarray type bespoke to each processor
 							CALL MPI_Type_create_subarray(2, [ny, nx], [subarray_rows_array(i+1), subarray_cols_array(i+1)], &
 							[subarray_row_start(i+1),subarray_col_start(i+1)], MPI_ORDER_FORTRAN, MPI_DOUBLE_PRECISION, RECVSUBBARAY, ierr)
-							
 							CALL MPI_TYPE_COMMIT(RECVSUBBARAY, ierr)
 						
 							! Receiving with this new receiving subarray type
@@ -334,9 +287,9 @@ t1 = MPI_WTIME()
 						CALL MPI_WAITALL(Nprocs+1, request_array_gather, status_array_gather, ierr)
 
 						! --- PUTTING INTO FILE ---
-						! x vector of whole domain (could have also done a mpi_gatherv)
+						! x vector of whole domain 
 						xtot 	= 0. + dx * [(i, i=0,(nx-1))] ! Implied DO loop used
-						! y vector of whole domain (could have also done a mpi_gatherv)
+						! y vector of whole domain 
 						ytot 	= 0. + dy * [(i, i=0,(ny-1))] ! Implied DO loop used
 
 						! Writing updated solution to file at each new iteration
@@ -360,40 +313,6 @@ t1 = MPI_WTIME()
 				iter = iter + 1
 
 			end do
-
-
-! 			 ;               ,           
-!          ,;                 '.         
-!         ;:                   :;        
-!        ::                     ::       
-!        ::                     ::       
-!        ':                     :        
-!         :.                    :        
-!      ;' ::                   ::  '     
-!     .'  ';                   ;'  '.    
-!    ::    :;                 ;:    ::   
-!    ;      :;.             ,;:     ::   
-!    :;      :;:           ,;"      ::   
-!    ::.      ':;  ..,.;  ;:'     ,.;:   
-!     "'"...   '::,::::: ;:   .;.;""'    
-!         '"""....;:::::;,;.;"""         
-!     .:::.....'"':::::::'",...;::::;.   
-!    ;:' '""'"";.,;:::::;.'""""""  ':;   
-!   ::'         ;::;:::;::..         :;  
-!  ::         ,;:::::::::::;:..       :: 
-!  ;'     ,;;:;::::::::::::::;";..    ':.
-! ::     ;:"  ::::::"""'::::::  ":     ::
-!  :.    ::   ::::::;  :::::::   :     ; 
-!   ;    ::   :::::::  :::::::   :    ;  
-!    '   ::   ::::::....:::::'  ,:   '   
-!     '  ::    :::::::::::::"   ::       
-!        ::     ':::::::::"'    ::       
-!        ':       """""""'      ::       
-!         ::                   ;:        
-!         ':;                 ;:"        
-!           ';              ,;'          
-!             "'           '"            
-!               '
 
 		! REDBLACK
         CASE ("redblack")
@@ -529,18 +448,9 @@ t1 = MPI_WTIME()
 
 				!-------------------------------------------------------------------!
 				! Printing to screen after a certain amount of time
-				! if ((time-int(time))<dt) then
+
 				if ((MOD(iter,1000).eq.0)) then
 					! TECPLOT
-
-					! --------------------------------------------------------------------------------------- 
-					!     _____     ____
-					!    /      \  |  o | 
-					!   |        |/ ___\|                TECPLOT
-					!   |_________/     
-					!   |_|_| |_|_|
-					!	  
-					! ---------------------------------------------------------------------------------------
 
 					! These subarrays are now sent to PID 0
 					CALL MPI_ISEND( T, 1, SENDINGSUBBARAY, 0, tag2, COMM_TOPO, request_array_gather(1), ierr)	
@@ -565,9 +475,9 @@ t1 = MPI_WTIME()
 						
 						
 						! --- PUTTING INTO FILE ---
-						! x vector of whole domain (could have also done a mpi_gatherv)
+						! x vector of whole domain 
 						xtot 	= 0. + dx * [(i, i=0,(nx-1))] ! Implied DO loop used
-						! y vector of whole domain (could have also done a mpi_gatherv)
+						! y vector of whole domain 
 						ytot 	= 0. + dy * [(i, i=0,(ny-1))] ! Implied DO loop used
 
 						! Writing updated solution to file at each new iteration
@@ -633,7 +543,7 @@ t1 = MPI_WTIME()
 			end do 
 
 
-!-------------------------------------------------------------------!
+		!-------------------------------------------------------------------!
 			! COMMUNICATION 
 			! ------- RECEIVE FROM THE RIGHT/EAST, SEND TO THE RIGHT/EAST
 			! Receive from the east1, and put it into the space for the ghost node on the east side
@@ -708,7 +618,7 @@ t1 = MPI_WTIME()
 					end do
 				end do
 
-!-------------------------------------------------------------------!
+			!-------------------------------------------------------------------!
 				! COMMUNICATION
 				! ------- RECEIVE FROM THE RIGHT/EAST, SEND TO THE RIGHT/EAST
 				! Receive from the east1, and put it into the space for the ghost node on the east side
@@ -980,15 +890,6 @@ t1 = MPI_WTIME()
 				if ((MOD(iter,100).eq.0)) then
 					! TECPLOT
 
-					! --------------------------------------------------------------------------------------- 
-					!     _____     ____
-					!    /      \  |  o | 
-					!   |        |/ ___\|                TECPLOT
-					!   |_________/     
-					!   |_|_| |_|_|
-					!	  
-					! ---------------------------------------------------------------------------------------
-
 					! These subarrays are now sent to PID 0
 					CALL MPI_ISEND( T, 1, SENDINGSUBBARAY, 0, tag2, COMM_TOPO, request_array_gather(1), ierr)	
 							
@@ -1080,34 +981,6 @@ t1 = MPI_WTIME()
 	! write(*,*) pid, resil,resih,resjl,resjh
 
 
-	
-	
-	
-	! *************************************************
-	! --- Collating Final Temperature Arrays ---
-	! T arrays from node values need to be sent to processor zero who needs to put them in the right place.
-	! Sending must consider that ghost nodes need to be ignored, and that looks different for all processors
-	! Receving will also need to consider where the matrix goes in the final domain (will not be contiguous)
-	
-	! ---- MAXIMUM AND AVERAGE TEMPERATURE ----
-	! Printing maximum and average temperature to 8 decimal places:
-	
-	! ! Max temperature. Can take max over ghost nodes too because it doesn't matter - after global max.
-	! CALL MPI_REDUCE(maxval(T), &
-	! T_max, 1, MPI_DOUBLE_PRECISION, MPI_MAX, 0, COMM_TOPO, ierr)
-	
-	! ! Average temperature. Only calculate average over nodes considered by each processor. Ignore ghost nodes.
-	! CALL MPI_REDUCE( (1/(DBLE(nx)*DBLE(ny))) * sum( T(node_low_y:node_high_y, node_low_x:node_high_x) ), &
- 	! T_avg, 1, MPI_DOUBLE_PRECISION, MPI_SUM, 0, COMM_TOPO, ierr)
-	
-	! IF (pid .EQ. 0) THEN 
-		! WRITE(*,'(A35, f10.8, A16)') "Maximum temperature across domain: ", T_max, " degrees Celcius"
-		! WRITE(*,'(A35, f10.8, A16)') "Average temperature across domain: ", T_avg, " degrees Celcius"
-	! END IF
-	
-	! ---- SEND DATA TYPE CREATION ----
-	! The final send/recvs will be dependent on number of processors unlike before. Re-allocate relevant arrays to reflect this
-
 CALL MPI_FINALIZE(ierr)
 
     ! NOTE: Need to update this to match the number of spatial divisions (nx)
@@ -1119,9 +992,3 @@ CALL MPI_FINALIZE(ierr)
 
 END PROGRAM MAIN
 
-! b - matrix
-subroutine printmatrix(b,n,m)
-	integer::n,m
-	real (kind=8)::b(n,m) !n = # rows, m = # columns
-	do i=1,n; print '(20f18.14)',b(i,1:m); enddo
-endsubroutine
