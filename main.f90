@@ -947,7 +947,6 @@ t1 = MPI_WTIME()
 
 	if (pid.eq.0) then
 		write(*,*) 'Output after solver'
-		! write(*,1600) Tfinal
 		write(*,*) '-----------------------------------------'
 		write(*,*) 'Time =', time
 		write(*,*) 'Iteration =', iter
@@ -957,38 +956,10 @@ t1 = MPI_WTIME()
 		write(*,*) 'Computational time =', t2-t1, 'seconds'
 		write(*,*) 'Average Temperature =', sum(sum((Tfinal),1),1)/(nx*ny)
 		write(*,*) '-----------------------------------------'
-
-		! Writing the final iteration to a tecplot file
-		! write(file_name, "(A14,A4)") "TecPlot2Dfinal",".tec"
-		! CALL tecplot_2D ( iunit, nx, ny, xtot, ytot, Tfinal,  file_name )
-
-		! 	! Checking what size the A matrix coefficients are
-		! 	write(*,*) 'A matrix coefficients'
-		! 	! write(*,*) an(1,1), as(1,1), ae(1,1), aw(1,1), ap(1,1)
-		! 	write(*,*) 'an =', an(1,1)
-		! 	write(*,*) 'as =', as(1,1)
-		! 	write(*,*) 'ae =', ae(1,1)
-		! 	write(*,*) 'aw =', aw(1,1)
-		! 	write(*,*) 'ap =', ap(1,1)
-		! 	write(*,*) 'b =', b(1,1)
-
-		! write(*,*) pid, "matrix after solver"
-		! call printmatrix(Tfinal, SIZE(T, DIM=1), SIZE(T, DIM=2))
 	end if
-	! Outputting the domain indices
-	! write(*,*) nx, ny
-	! write(*,*) pid,il,ih,jl,jh
-	! write(*,*) pid, resil,resih,resjl,resjh
 
 
 CALL MPI_FINALIZE(ierr)
-
-    ! NOTE: Need to update this to match the number of spatial divisions (nx)
-    1100 FORMAT(8(F20.10,1x))
-    1600 FORMAT(8(F14.8,1x))
-    1400 FORMAT(8(F14.8,1x))
-    1200 FORMAT(I2.1,I2.1,6(F8.4,1x))
-    1300 FORMAT(I2.1,6(F10.8,1x))
 
 END PROGRAM MAIN
 
